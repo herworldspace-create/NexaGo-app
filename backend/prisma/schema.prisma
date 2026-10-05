@@ -1,0 +1,1204 @@
+// =====================================================================
+// NEXA — Prisma Schema (Phase 1)
+//
+// Phase 1 covers: users & roles, authentication foundation, identity
+// verification architecture, driver verification/document architecture,
+// device sessions, and admin audit logging.
+//
+// Deferred to later phases (do not implement yet): Ride, RideStatusHistory,
+// Location, Payment, Transaction, DriverWallet, WalletTransaction, Rating,
+// Complaint, Notification, FareConfiguration, PromoCode.
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------
+
+enum Role {
+  PASSENGER
+  DRIVER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum PassengerVerificationStatus {
+  UNVERIFIED
+  PHONE_VERIFIED
+  IDENTITY_PENDING
+  IDENTITY_VERIFIED
+  IDENTITY_FAILED
+  SUSPENDED
+}
+
+enum DriverVerificationStatus {
+  DRAFT
+  SUBMITTED
+  IDENTITY_PENDING
+  DOCUMENTS_PENDING
+  DOCUMENT_REVIEW
+  BACKGROUND_CHECK_PENDING
+  ADMIN_REVIEW
+  APPROVED
+  ACTIVE
+  IDENTITY_FAILED
+  DOCUMENT_REJECTED
+  EXPIRED_DOCUMENT
+  ADMIN_REJECTED
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum IdentityVerificationStatus {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  FAILED
+  EXPIRED
+}
+
+enum DocumentStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+  SUPERSEDED
+}
+
+enum DriverDocumentType {
+  DRIVERS_LICENCE
+  VEHICLE_REGISTRATION
+  VEHICLE_INSURANCE
+  ROADWORTHINESS_CERTIFICATE
+  VEHICLE_INSPECTION
+  PROOF_OF_ADDRESS
+  OTHER
+}
+
+enum OtpPurpose {
+  PHONE_VERIFICATION
+  LOGIN
+}
+
+enum ConsentType {
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  IDENTITY_VERIFICATION
+}
+
+enum RideStatus {
+  REQUESTED
+  ACCEPTED
+  DRIVER_ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED_BY_PASSENGER
+  CANCELLED_BY_DRIVER
+  CANCELLED_SYSTEM
+  NO_DRIVERS_AVAILABLE
+  EXPIRED
+}
+
+enum RideCancelledBy {
+  PASSENGER
+  DRIVER
+  SYSTEM
+}
+
+enum DeliveryStatus {
+  REQUESTED
+  PACKAGE_PICKUP_PENDING
+  PACKAGE_PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED_BY_SENDER
+  CANCELLED_BY_DRIVER
+  CANCELLED_SYSTEM
+  NO_DRIVERS_AVAILABLE
+}
+
+enum DeliveryCancelledBy {
+  SENDER
+  DRIVER
+  SYSTEM
+}
+
+enum PackageCategory {
+  DOCUMENT
+  PARCEL
+  FRAGILE
+  FOOD
+  ELECTRONICS
+  OTHER
+}
+
+enum WeightTier {
+  LIGHT
+  MEDIUM
+  HEAVY
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum WalletTransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+enum UserWalletTransactionType {
+  FUNDING
+  TRANSFER_IN
+  TRANSFER_OUT
+  VTU_PURCHASE
+  VTU_REFUND
+}
+
+enum VtuProductType {
+  AIRTIME
+  DATA
+  ELECTRICITY
+  CABLE_TV
+}
+
+enum VtuOrderStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  REFUNDED
+}
+
+enum NetworkProvider {
+  MTN
+  AIRTEL
+  GLO
+  NINE_MOBILE
+}
+
+enum VehicleCategoryType {
+  PASSENGER
+  DELIVERY
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum ComplaintCategory {
+  SAFETY
+  PAYMENT
+  DRIVER_CONDUCT
+  PASSENGER_CONDUCT
+  VEHICLE_CONDITION
+  OTHER
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+// ---------------------------------------------------------------------
+// Fare engine
+// ---------------------------------------------------------------------
+
+/// All monetary amounts in this schema are stored as integer kobo
+/// (1 NGN = 100 kobo) — never as floats — to avoid rounding/precision
+/// bugs with money. Divide by 100 for display in Naira.
+
+// ---------------------------------------------------------------------
+// Core identity & auth
+// ---------------------------------------------------------------------
+
+model User {
+  id               String     @id @default(uuid())
+  phone            String     @unique
+  phoneVerifiedAt  DateTime?
+  email            String?    @unique
+  role             Role       @default(PASSENGER)
+  status           UserStatus @default(ACTIVE)
+
+  passengerProfile PassengerProfile?
+  driverProfile    DriverProfile?
+
+  identityVerifications IdentityVerification[]
+  deviceSessions        DeviceSession[]
+  consentRecords        ConsentRecord[]
+  emergencyContacts     EmergencyContact[]
+  adminAuditLogsWritten AdminAuditLog[]         @relation("AdminActor")
+  ridesAsPassenger      Ride[]                  @relation("PassengerRides")
+  ridesAsDriver         Ride[]                  @relation("DriverRides")
+  deliveriesAsSender    Delivery[]              @relation("SenderDeliveries")
+  deliveriesAsDriver    Delivery[]              @relation("DriverDeliveries")
+  deviceTokens          DeviceToken[]
+  notifications         Notification[]
+  ratingsGiven          Rating[]                @relation("RatingsGiven")
+  ratingsReceived       Rating[]                @relation("RatingsReceived")
+  complaintsRaised      Complaint[]             @relation("ComplaintsRaised")
+  complaintsAgainst     Complaint[]             @relation("ComplaintsAgainst")
+  complaintsResolved    Complaint[]             @relation("ComplaintsResolvedBy")
+  walletFundingPayments Payment[]               @relation("WalletFundingPayments")
+  wallet                UserWallet?
+  vtuOrders             VtuOrder[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model OtpChallenge {
+  id          String     @id @default(uuid())
+  phone       String
+  purpose     OtpPurpose
+  codeHash    String
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(5)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  requestIp   String?
+  createdAt   DateTime   @default(now())
+
+  @@index([phone, purpose])
+  @@map("otp_challenges")
+}
+
+model DeviceSession {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId         String?
+  userAgent        String?
+  ipAddress        String?
+  refreshTokenHash String
+  isRevoked        Boolean   @default(false)
+  expiresAt        DateTime
+  lastUsedAt       DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+  @@map("device_sessions")
+}
+
+model ConsentRecord {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentType ConsentType
+  version     String
+  ipAddress   String?
+  createdAt   DateTime    @default(now())
+
+  @@index([userId, consentType])
+  @@map("consent_records")
+}
+
+model EmergencyContact {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName     String
+  phone        String
+  relationship String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@map("emergency_contacts")
+}
+
+// ---------------------------------------------------------------------
+// Passenger
+// ---------------------------------------------------------------------
+
+model PassengerProfile {
+  id                 String                       @id @default(uuid())
+  userId             String                       @unique
+  user               User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName           String?
+  dateOfBirth        DateTime?
+  profilePhotoUrl    String?
+  verificationStatus PassengerVerificationStatus  @default(UNVERIFIED)
+
+  /// Running total, not a stored average — avoids float-precision drift
+  /// from repeated running-average writes. Average = ratingsSum / ratingsCount.
+  ratingsSum   Int @default(0)
+  ratingsCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([verificationStatus])
+  @@map("passenger_profiles")
+}
+
+// ---------------------------------------------------------------------
+// Driver
+// ---------------------------------------------------------------------
+
+model DriverProfile {
+  id                 String                    @id @default(uuid())
+  userId             String                    @unique
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName           String?
+  dateOfBirth        DateTime?
+  verificationStatus DriverVerificationStatus  @default(DRAFT)
+
+  licenceNumber      String?
+  licenceExpiryDate  DateTime?
+
+  ratingsSum   Int @default(0)
+  ratingsCount Int @default(0)
+
+  documents DriverDocument[]
+  vehicles  Vehicle[]
+  location  DriverLocation?
+  wallet    DriverWallet?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([verificationStatus])
+  @@map("driver_profiles")
+}
+
+model DriverDocument {
+  id               String             @id @default(uuid())
+  driverProfileId  String
+  driverProfile    DriverProfile      @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  type             DriverDocumentType
+  storagePath      String
+  status           DocumentStatus     @default(PENDING_REVIEW)
+  expiryDate       DateTime?
+  rejectionReason  String?
+  version          Int                @default(1)
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([driverProfileId])
+  @@index([status])
+  @@map("driver_documents")
+}
+
+model Vehicle {
+  id              String   @id @default(uuid())
+  driverProfileId String
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  vehicleCategoryId String?
+  vehicleCategory   VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id])
+  make            String
+  model            String
+  year            Int
+  colour          String
+  plateNumber     String   @unique
+  isActive        Boolean  @default(true)
+
+  documents VehicleDocument[]
+  rides     Ride[]
+  deliveries Delivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([driverProfileId])
+  @@map("vehicles")
+}
+
+model VehicleDocument {
+  id               String             @id @default(uuid())
+  vehicleId        String
+  vehicle          Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type             DriverDocumentType
+  storagePath      String
+  status           DocumentStatus     @default(PENDING_REVIEW)
+  expiryDate       DateTime?
+  rejectionReason  String?
+  version          Int                @default(1)
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([status])
+  @@map("vehicle_documents")
+}
+
+// ---------------------------------------------------------------------
+// Identity verification (NIN, via authorized third-party provider only)
+// ---------------------------------------------------------------------
+
+model IdentityVerification {
+  id       String @id @default(uuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status             IdentityVerificationStatus @default(NOT_STARTED)
+  provider            String
+  providerReference   String?
+
+  /// HMAC hash of the NIN, used only for duplicate-account detection.
+  /// The raw NIN itself is never persisted.
+  ninHash             String?
+
+  /// Full name as confirmed by the provider (used to cross-check against
+  /// user-submitted name), stored only if needed for compliance review.
+  verifiedFullName    String?
+
+  consentedAt         DateTime?
+  verifiedAt           DateTime?
+  failureReason        String?
+
+  attempts IdentityVerificationAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([ninHash])
+  @@map("identity_verifications")
+}
+
+model IdentityVerificationAttempt {
+  id                     String               @id @default(uuid())
+  identityVerificationId String
+  identityVerification   IdentityVerification @relation(fields: [identityVerificationId], references: [id], onDelete: Cascade)
+
+  attemptNumber    Int
+  status           IdentityVerificationStatus
+  providerRequestId String?
+  failureReason    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([identityVerificationId])
+  @@map("identity_verification_attempts")
+}
+
+// ---------------------------------------------------------------------
+// Admin & audit
+// ---------------------------------------------------------------------
+
+model AdminAuditLog {
+  id            String   @id @default(uuid())
+  adminUserId   String
+  adminUser     User     @relation("AdminActor", fields: [adminUserId], references: [id])
+  action        String
+  targetType    String
+  targetId      String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([targetType, targetId])
+  @@map("admin_audit_logs")
+}
+
+model OperatingArea {
+  id        String   @id @default(uuid())
+  name      String
+  state     String
+  isActive  Boolean  @default(true)
+
+  fareConfigurations FareConfiguration[]
+  surgeSettings      SurgeSetting[]
+  rides              Ride[]
+  deliveries         Delivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, state])
+  @@map("operating_areas")
+}
+
+model VehicleCategory {
+  id          String   @id @default(uuid())
+  /// Short unique machine key, e.g. "economy", "comfort", "keke", "okada", "delivery-bike", "delivery-van".
+  code        String   @unique
+  name        String
+  description String?
+  /// PASSENGER categories can be used for Ride requests; DELIVERY
+  /// categories can be used for Delivery requests. A category is never
+  /// both — enforced in application code at request-creation time.
+  type        VehicleCategoryType @default(PASSENGER)
+  isActive    Boolean  @default(true)
+
+  fareConfigurations FareConfiguration[]
+  surgeSettings      SurgeSetting[]
+  rides              Ride[]
+  deliveries         Delivery[]
+  vehicles           Vehicle[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vehicle_categories")
+}
+
+/// A versioned price sheet for one (operating area, vehicle category) pair.
+/// Only one row may be isActive=true per pair at a time — enforced in
+/// application code (AdminFareService), which atomically deactivates the
+/// previous active row when a new one is created, so pricing history is
+/// preserved rather than overwritten.
+model FareConfiguration {
+  id                String          @id @default(uuid())
+  operatingAreaId   String
+  operatingArea     OperatingArea   @relation(fields: [operatingAreaId], references: [id], onDelete: Cascade)
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+
+  currency String @default("NGN")
+
+  baseFareKobo               Int
+  perKmRateKobo               Int
+  perMinuteRateKobo           Int
+  serviceFeeFlatKobo          Int  @default(0)
+  /// Basis points of the pre-service-fee subtotal, e.g. 250 = 2.5%.
+  serviceFeePercentBasisPoints Int @default(0)
+  minimumFareKobo             Int
+  cancellationFeeKobo         Int  @default(0)
+  /// Platform's cut of the fare, in basis points (10000 = 100%). Snapshotted
+  /// onto the Ride at request time so a later config change never
+  /// retroactively alters a driver's earnings on an already-booked ride.
+  platformCommissionBasisPoints Int @default(0)
+
+  isActive  Boolean  @default(true)
+
+  createdByAdminId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([operatingAreaId, vehicleCategoryId, isActive])
+  @@map("fare_configurations")
+}
+
+/// Admin-set surge multiplier. `vehicleCategoryId` null means "applies to
+/// all categories in this area". Algorithmic/automatic surge (demand-based)
+/// is out of scope for this phase — surge here is a manual admin override.
+model SurgeSetting {
+  id                String           @id @default(uuid())
+  operatingAreaId   String
+  operatingArea     OperatingArea    @relation(fields: [operatingAreaId], references: [id], onDelete: Cascade)
+  vehicleCategoryId String?
+  vehicleCategory   VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id], onDelete: Cascade)
+
+  /// 10000 = 1.00x (no surge). Must be >= 10000.
+  multiplierBasisPoints Int
+  reason                String?
+  isActive              Boolean @default(true)
+  setByAdminId          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([operatingAreaId, vehicleCategoryId, isActive])
+  @@map("surge_settings")
+}
+
+// ---------------------------------------------------------------------
+// Rides
+// ---------------------------------------------------------------------
+
+/// Latest known location + online/offline status for a driver. This is a
+/// single upserted row per driver (not a GPS trail/history) — sufficient
+/// for matching. A time-series location history and live push over
+/// WebSockets is a later phase.
+model DriverLocation {
+  id              String        @id @default(uuid())
+  driverProfileId String        @unique
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+
+  latitude  Float
+  longitude Float
+  heading   Float?
+  isOnline  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isOnline])
+  @@map("driver_locations")
+}
+
+model Ride {
+  id String @id @default(uuid())
+
+  passengerUserId String
+  passenger       User    @relation("PassengerRides", fields: [passengerUserId], references: [id])
+  driverUserId    String?
+  driver          User?   @relation("DriverRides", fields: [driverUserId], references: [id])
+  vehicleId       String?
+  vehicle         Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  operatingAreaId   String
+  operatingArea     OperatingArea   @relation(fields: [operatingAreaId], references: [id])
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id])
+
+  status RideStatus @default(REQUESTED)
+
+  pickupLat       Float
+  pickupLng       Float
+  pickupAddress   String?
+  destinationLat  Float
+  destinationLng  Float
+  destinationAddress String?
+
+  estimatedDistanceKm      Float
+  estimatedDurationMinutes Float
+
+  currency               String @default("NGN")
+  estimatedFareKobo      Int
+  /// Full breakdown from FareService at request time, kept for transparency
+  /// and dispute resolution even if pricing config later changes.
+  estimatedFareBreakdown Json
+  finalFareKobo          Int?
+  /// Snapshotted from the active FareConfiguration at request time — see
+  /// note on that field for why this isn't looked up fresh at payment time.
+  platformCommissionBasisPoints Int @default(0)
+
+  cancelledBy       RideCancelledBy?
+  cancellationReason String?
+
+  requestedAt     DateTime  @default(now())
+  acceptedAt      DateTime?
+  driverArrivedAt DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+
+  statusHistory RideStatusHistory[]
+  payment       Payment?
+  ratings       Rating[]
+  complaints    Complaint[]
+  fareRevisions RideFareRevision[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([passengerUserId])
+  @@index([driverUserId])
+  @@index([status])
+  @@map("rides")
+}
+
+model RideStatusHistory {
+  id     String     @id @default(uuid())
+  rideId String
+  ride   Ride       @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  status RideStatus
+
+  changedByUserId String?
+  reason          String?
+
+  createdAt DateTime @default(now())
+
+  @@index([rideId])
+  @@map("ride_status_history")
+}
+
+/// Audit trail for the ONE case a locked-in fare is allowed to change:
+/// the passenger explicitly updates the destination/route. Kept as
+/// append-only history (never overwritten) for transparency and dispute
+/// resolution — same "version, don't overwrite" pattern as
+/// FareConfiguration and IdentityVerificationAttempt.
+model RideFareRevision {
+  id     String @id @default(uuid())
+  rideId String
+  ride   Ride   @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  previousDestinationLat Float
+  previousDestinationLng Float
+  newDestinationLat      Float
+  newDestinationLng      Float
+
+  previousEstimatedFareKobo Int
+  newEstimatedFareKobo      Int
+  newEstimatedFareBreakdown Json
+
+  reason        String?
+  revisedByUserId String
+
+  createdAt DateTime @default(now())
+
+  @@index([rideId])
+  @@map("ride_fare_revisions")
+}
+
+// ---------------------------------------------------------------------
+// Payments & driver wallet
+// ---------------------------------------------------------------------
+
+/// One payment per ride. CARD/BANK_TRANSFER payments may ONLY be marked
+/// PAID by a signature-verified gateway webhook (see PaymentsService) —
+/// never by any client-supplied status. CASH is a driver attestation, a
+/// fundamentally different trust model, handled by a separate endpoint.
+/// One payment per ride OR per delivery — exactly one of rideId/deliveryId
+/// is set, enforced in application code (PaymentsService), since Prisma
+/// has no declarative CHECK-constraint support here. Both are nullable
+/// @unique columns: Postgres treats multiple NULLs as distinct for a
+/// unique index, so many delivery-payments (rideId=NULL) and many
+/// ride-payments (deliveryId=NULL) coexist without conflicting, while
+/// each non-null value is still enforced unique — i.e. still exactly one
+/// payment per ride and one per delivery.
+model Payment {
+  id       String    @id @default(uuid())
+  rideId   String?   @unique
+  ride     Ride?     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  deliveryId String? @unique
+  delivery Delivery? @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  /// Third settlement destination: this Payment is a user topping up
+  /// their general wallet, not paying for a ride/delivery. Same
+  /// "exactly one of the linked ids is set" rule as rideId/deliveryId.
+  walletFundingUserId String?
+  walletFundingUser   User?   @relation("WalletFundingPayments", fields: [walletFundingUserId], references: [id])
+
+  method   PaymentMethod
+  status   PaymentStatus @default(PENDING)
+  amountKobo Int
+  currency String @default("NGN")
+
+  /// "paystack" | "cash" — which rail settled this payment.
+  provider          String?
+  /// Unique reference sent to/received from the gateway. Unique constraint
+  /// is part of how we prevent a webhook being misapplied to the wrong
+  /// payment.
+  providerReference String? @unique
+
+  paidAt        DateTime?
+  failureReason String?
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("payments")
+}
+
+/// Immutable log of every gateway interaction/event for a payment —
+/// separate from Payment's current-state row so the full history
+/// (including a rejected/duplicate webhook attempt) is preserved for
+/// dispute resolution.
+model Transaction {
+  id        String  @id @default(uuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  eventType         String
+  amountKobo        Int
+  providerReference String?
+  /// True if this event was accepted and applied; false for a rejected
+  /// duplicate/mismatched-amount event kept only for audit purposes.
+  accepted          Boolean
+  note              String?
+
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
+  @@map("transactions")
+}
+
+model DriverWallet {
+  id              String        @id @default(uuid())
+  driverProfileId String        @unique
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+
+  balanceKobo Int    @default(0)
+  currency    String @default("NGN")
+
+  transactions WalletTransaction[]
+  withdrawals  Withdrawal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("driver_wallets")
+}
+
+model WalletTransaction {
+  id       String       @id @default(uuid())
+  walletId String
+  wallet   DriverWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  type        WalletTransactionType
+  amountKobo  Int
+  /// Generic reference to whatever earned/spent this (a ride id, a
+  /// delivery id, a withdrawal reversal note, etc.) — not a foreign key,
+  /// since it can point to different tables depending on `description`.
+  referenceId String?
+  description String?
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId])
+  @@map("wallet_transactions")
+}
+
+/// A withdrawal *request* — the actual money movement (payout transfer) is
+/// a genuine external-integration gap in this phase (see
+/// PayoutProvider / PaystackPayoutProvider), not yet connected to a real
+/// bank-transfer rail. The balance is debited immediately on request
+/// (atomically, see WalletService) so it can't be double-spent while a
+/// payout is pending.
+model Withdrawal {
+  id       String       @id @default(uuid())
+  walletId String
+  wallet   DriverWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  amountKobo Int
+  status     WithdrawalStatus @default(PENDING)
+  /// Opaque reference to a bank-account-linking record from a future
+  /// phase — raw account numbers are deliberately not stored here
+  /// (data minimization).
+  payoutAccountReference String?
+  failureReason          String?
+
+  requestedAt DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([walletId])
+  @@index([status])
+  @@map("withdrawals")
+}
+
+// ---------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------
+
+model DeviceToken {
+  id       String         @id @default(uuid())
+  userId   String
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token    String         @unique
+  platform DevicePlatform
+  isActive Boolean        @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isActive])
+  @@map("device_tokens")
+}
+
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type   String
+  title  String
+  body   String
+  /// Arbitrary structured payload (e.g. { rideId }) for the client to act on when tapped.
+  data   Json?
+  status NotificationStatus @default(PENDING)
+  readAt DateTime?
+  sentAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------
+// Ratings & complaints
+// ---------------------------------------------------------------------
+
+/// One rating per (ride, rater) — a passenger rates the driver and the
+/// driver rates the passenger, each exactly once per completed ride.
+/// The unique constraint is the real enforcement (race-safe at the DB
+/// level); RatingsService's application-level check is a friendlier
+/// error message on top of it, not the sole guard.
+model Rating {
+  id     String @id @default(uuid())
+  rideId String
+  ride   Ride   @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  raterUserId String
+  rater       User   @relation("RatingsGiven", fields: [raterUserId], references: [id])
+  ratedUserId String
+  rated       User   @relation("RatingsReceived", fields: [ratedUserId], references: [id])
+
+  score   Int
+  comment String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([rideId, raterUserId])
+  @@index([ratedUserId])
+  @@map("ratings")
+}
+
+model Complaint {
+  id     String  @id @default(uuid())
+  rideId String?
+  ride   Ride?   @relation(fields: [rideId], references: [id], onDelete: SetNull)
+
+  raisedByUserId String
+  raisedBy       User    @relation("ComplaintsRaised", fields: [raisedByUserId], references: [id])
+  againstUserId  String?
+  against        User?   @relation("ComplaintsAgainst", fields: [againstUserId], references: [id])
+
+  category    ComplaintCategory
+  description String
+  status      ComplaintStatus   @default(OPEN)
+
+  resolutionNote   String?
+  resolvedByAdminId String?
+  resolvedByAdmin   User?   @relation("ComplaintsResolvedBy", fields: [resolvedByAdminId], references: [id])
+  resolvedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([raisedByUserId])
+  @@map("complaints")
+}
+
+// ---------------------------------------------------------------------
+// Nexa Deliver — on-demand courier/logistics
+// ---------------------------------------------------------------------
+
+/// A courier job. Deliberately mirrors Ride's shape (same fixed-price
+/// snapshot pattern, same commission snapshot, same matching/eligibility
+/// approach) rather than sharing a table with it, since a delivery has no
+/// passenger and has package/recipient details a ride never needs.
+model Delivery {
+  id String @id @default(uuid())
+
+  senderUserId String
+  sender       User    @relation("SenderDeliveries", fields: [senderUserId], references: [id])
+  driverUserId String?
+  driver       User?   @relation("DriverDeliveries", fields: [driverUserId], references: [id])
+  vehicleId    String?
+  vehicle      Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  operatingAreaId   String
+  operatingArea     OperatingArea   @relation(fields: [operatingAreaId], references: [id])
+  /// Must reference a VehicleCategory with type = DELIVERY — enforced in
+  /// application code (DeliveriesService), same as Ride enforces PASSENGER.
+  vehicleCategoryId String
+  vehicleCategory   VehicleCategory @relation(fields: [vehicleCategoryId], references: [id])
+
+  status DeliveryStatus @default(REQUESTED)
+
+  pickupLat        Float
+  pickupLng        Float
+  pickupAddress    String?
+  dropoffLat       Float
+  dropoffLng       Float
+  dropoffAddress   String?
+
+  estimatedDistanceKm      Float
+  estimatedDurationMinutes Float
+
+  currency               String @default("NGN")
+  estimatedFareKobo      Int
+  estimatedFareBreakdown Json
+  finalFareKobo          Int?
+  platformCommissionBasisPoints Int @default(0)
+
+  cancelledBy        DeliveryCancelledBy?
+  cancellationReason String?
+
+  requestedAt     DateTime  @default(now())
+  pickupPendingAt DateTime?
+  pickedUpAt      DateTime?
+  inTransitAt     DateTime?
+  deliveredAt     DateTime?
+  cancelledAt     DateTime?
+
+  parcel        Parcel?
+  payment       Payment?
+  statusHistory DeliveryStatusHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([senderUserId])
+  @@index([driverUserId])
+  @@index([status])
+  @@map("deliveries")
+}
+
+/// Package details for a Delivery — split out as its own model (rather
+/// than inlined onto Delivery) since it's a distinct concept the spec
+/// calls out separately, and it holds the security-sensitive
+/// confirmation PIN.
+model Parcel {
+  id         String   @id @default(uuid())
+  deliveryId String   @unique
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  category      PackageCategory
+  weightTier    WeightTier
+  recipientName  String
+  recipientPhone String
+  deliveryNotes  String?
+
+  /// HMAC hash of the 4-digit confirmation PIN — never stored in
+  /// plaintext, same treatment as OTP codes. Verified by the courier
+  /// entering the PIN the recipient was sent, at DELIVERED time.
+  confirmationPinHash String
+  pinVerifiedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("parcels")
+}
+
+model DeliveryStatusHistory {
+  id         String         @id @default(uuid())
+  deliveryId String
+  delivery   Delivery       @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  status     DeliveryStatus
+
+  changedByUserId String?
+  reason          String?
+
+  createdAt DateTime @default(now())
+
+  @@index([deliveryId])
+  @@map("delivery_status_history")
+}
+
+// ---------------------------------------------------------------------
+// General user wallet — funding, P2P transfers, VTU spend
+// ---------------------------------------------------------------------
+
+/// Every user (passenger or driver) may have one general-purpose wallet,
+/// separate from DriverWallet (which is specifically ride/delivery
+/// earnings awaiting bank payout). This wallet is funded by the user
+/// themselves (card, via the same Paystack rail as everything else) and
+/// spent on P2P transfers or VTU purchases.
+model UserWallet {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  balanceKobo Int    @default(0)
+  currency    String @default("NGN")
+
+  /// HMAC hash of a 4-6 digit spend PIN — same treatment as OTP codes,
+  /// never stored in plaintext. Required before any transfer or VTU
+  /// purchase (not required for funding, which is already gated by the
+  /// card payment itself).
+  transactionPinHash String?
+
+  transactions UserWalletTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_wallets")
+}
+
+model UserWalletTransaction {
+  id       String     @id @default(uuid())
+  walletId String
+  wallet   UserWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  type       UserWalletTransactionType
+  amountKobo Int
+  /// Wallet balance immediately after this transaction — a point-in-time
+  /// snapshot for audit clarity, not the source of truth (the wallet's
+  /// own balanceKobo, updated atomically, is that).
+  balanceAfterKobo Int
+  /// A payment id, the other party's wallet transaction id, or a VTU
+  /// order id, depending on `type`.
+  referenceId String?
+  description String?
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId, createdAt])
+  @@map("user_wallet_transactions")
+}
+
+/// Airtime/data (and, in a future phase, electricity/cable) purchase
+/// record. `VtuProvider` is a swappable abstraction (see
+/// src/modules/vtu/interfaces) — no specific aggregator is wired up yet,
+/// same honesty as other unconfigured third-party integrations in this
+/// codebase.
+model VtuOrder {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type        VtuProductType
+  network     NetworkProvider?
+  phoneNumber String
+  amountKobo  Int
+  /// Data bundle code from the aggregator's catalog, when type = DATA.
+  bundleCode  String?
+
+  status            VtuOrderStatus @default(PENDING)
+  providerReference String?
+  failureReason     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("vtu_orders")
+}
