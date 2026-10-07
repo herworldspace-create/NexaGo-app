@@ -7,6 +7,7 @@ import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthenticatedUser } from './types/authenticated-user.type';
+import { Role } from '../../common/enums/role.enum';
 
 @Controller('auth')
 export class AuthController {
@@ -42,6 +43,55 @@ export class AuthController {
       ...result.tokens,
     };
   }
+
+  // --- NEW: Email & Password Endpoints ---
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('register/email')
+  async registerWithEmail(
+    @Body() body: { email: string; pass: string; intendedRole?: Role },
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string,
+    @Headers('x-device-id') deviceId: string,
+  ) {
+    const role = body.intendedRole || Role.PASSENGER;
+    const result = await this.authService.registerWithEmail(body.email, body.pass, role, {
+      ipAddress: ip,
+      userAgent,
+      deviceId,
+    });
+
+    return {
+      userId: result.userId,
+      role: result.role,
+      ...result.tokens,
+    };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('login/email')
+  async loginWithEmail(
+    @Body() body: { email: string; pass: string },
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string,
+    @Headers('x-device-id') deviceId: string,
+  ) {
+    const result = await this.authService.loginWithEmail(body.email, body.pass, {
+      ipAddress: ip,
+      userAgent,
+      deviceId,
+    });
+
+    return {
+      userId: result.userId,
+      role: result.role,
+      ...result.tokens,
+    };
+  }
+
+  // ---------------------------------------
 
   @Public()
   @Post('token/refresh')
