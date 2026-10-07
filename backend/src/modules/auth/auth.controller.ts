@@ -55,7 +55,7 @@ export class AuthController {
     @Headers('user-agent') userAgent: string,
     @Headers('x-device-id') deviceId: string,
   ) {
-    const role = body.intendedRole || Role.PASSENGER;
+    const role = (body.intendedRole || Role.PASSENGER) as Role.PASSENGER | Role.DRIVER;
     const result = await this.authService.registerWithEmail(body.email, body.pass, role, {
       ipAddress: ip,
       userAgent,
