@@ -255,9 +255,10 @@ enum ComplaintStatus {
 
 model User {
   id               String     @id @default(uuid())
-  phone            String     @unique
+  phone            String?    @unique
   phoneVerifiedAt  DateTime?
   email            String?    @unique
+  password         String?    // Added for email/password authentication
   role             Role       @default(PASSENGER)
   status           UserStatus @default(ACTIVE)
 
