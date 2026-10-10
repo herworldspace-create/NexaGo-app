@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 import { computeFare, FareBreakdown } from './fare-calculation.util';
 
@@ -11,7 +16,12 @@ export class FareService {
     vehicleCategoryId: string;
     distanceKm: number;
     durationMinutes: number;
-  }): Promise<FareBreakdown & { operatingAreaId: string; vehicleCategoryId: string }> {
+  }): Promise<
+    FareBreakdown & {
+      operatingAreaId: string;
+      vehicleCategoryId: string;
+    }
+  > {
     const config = await this.prisma.fareConfiguration.findFirst({
       where: {
         operatingAreaId: params.operatingAreaId,
@@ -26,11 +36,16 @@ export class FareService {
       );
     }
 
-    const surge = await this.resolveSurgeMultiplier(params.operatingAreaId, params.vehicleCategoryId);
-
     if (params.distanceKm < 0 || params.durationMinutes < 0) {
-      throw new BadRequestException('Distance and duration must not be negative.');
+      throw new BadRequestException(
+        'Distance and duration must not be negative.',
+      );
     }
+
+    const surge = await this.resolveSurgeMultiplier(
+      params.operatingAreaId,
+      params.vehicleCategoryId,
+    );
 
     const breakdown = computeFare({
       config: {
@@ -39,35 +54,96 @@ export class FareService {
         perKmRateKobo: config.perKmRateKobo,
         perMinuteRateKobo: config.perMinuteRateKobo,
         serviceFeeFlatKobo: config.serviceFeeFlatKobo,
-        serviceFeePercentBasisPoints: config.serviceFeePercentBasisPoints,
+        serviceFeePercentBasisPoints:
+          config.serviceFeePercentBasisPoints,
         minimumFareKobo: config.minimumFareKobo,
-        platformCommissionBasisPoints: config.platformCommissionBasisPoints,
+        platformCommissionBasisPoints:
+          config.platformCommissionBasisPoints,
       },
       distanceKm: params.distanceKm,
       durationMinutes: params.durationMinutes,
       surgeMultiplierBasisPoints: surge,
     });
 
-    return { ...breakdown, operatingAreaId: params.operatingAreaId, vehicleCategoryId: params.vehicleCategoryId };
+    return {
+      ...breakdown,
+      operatingAreaId: params.operatingAreaId,
+      vehicleCategoryId: params.vehicleCategoryId,
+    };
   }
 
   /**
-   * A category-specific active surge setting takes precedence over an
-   * area-wide one (vehicleCategoryId: null). Defaults to 1.00x (no surge)
-   * if neither exists.
+   * Returns active operating areas for authenticated users.
    */
-  private async resolveSurgeMultiplier(operatingAreaId: string, vehicleCategoryId: string): Promise<number> {
-    const categorySpecific = await this.prisma.surgeSetting.findFirst({
-      where: { operatingAreaId, vehicleCategoryId, isActive: true },
-      orderBy: { createdAt: 'desc' },
+  async listActiveOperatingAreas() {
+    return this.prisma.operatingArea.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        state: true,
+        isActive: true,
+      },
     });
-    if (categorySpecific) return categorySpecific.multiplierBasisPoints;
+  }
+
+  /**
+   * Returns active passenger vehicle categories only.
+   * Delivery categories are excluded.
+   */
+  async listActivePassengerCategories() {
+    return this.prisma.vehicleCategory.findMany({
+      where: {
+        isActive: true,
+        type: 'PASSENGER',
+      },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        description: true,
+        type: true,
+        isActive: true,
+      },
+    });
+  }
+
+  /**
+   * A category-specific active surge setting takes precedence
+   * over an area-wide setting. Defaults to 1.00x.
+   */
+  private async resolveSurgeMultiplier(
+    operatingAreaId: string,
+    vehicleCategoryId: string,
+  ): Promise<number> {
+    const categorySpecific =
+      await this.prisma.surgeSetting.findFirst({
+        where: {
+          operatingAreaId,
+          vehicleCategoryId,
+          isActive: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+    if (categorySpecific) {
+      return categorySpecific.multiplierBasisPoints;
+    }
 
     const areaWide = await this.prisma.surgeSetting.findFirst({
-      where: { operatingAreaId, vehicleCategoryId: null, isActive: true },
+      where: {
+        operatingAreaId,
+        vehicleCategoryId: null,
+        isActive: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
-    if (areaWide) return areaWide.multiplierBasisPoints;
+
+    if (areaWide) {
+      return areaWide.multiplierBasisPoints;
+    }
 
     return 10_000;
   }
