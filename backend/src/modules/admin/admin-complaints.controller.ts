@@ -34,13 +34,21 @@ export class AdminComplaintsController {
 
   @Post(':id/resolve')
   @AuditLog({ action: 'COMPLAINT_RESOLVED', targetType: 'Complaint' })
-  async resolve(@Param('id') id: string, @Body() dto: ResolveComplaintDto, @CurrentUser() admin: AuthenticatedUser) {
+  async resolve(
+    @Param('id') id: string,
+    @Body() dto: ResolveComplaintDto,
+    @CurrentUser() admin: AuthenticatedUser,
+  ) {
     return this.service.resolve(id, admin.userId, dto.resolutionNote);
   }
 
   @Post(':id/dismiss')
   @AuditLog({ action: 'COMPLAINT_DISMISSED', targetType: 'Complaint' })
-  async dismiss(@Param('id') id: string, @Body() dto: ResolveComplaintDto, @CurrentUser() admin: AuthenticatedUser) {
+  async dismiss(
+    @Param('id') id: string,
+    @Body() dto: ResolveComplaintDto,
+    @CurrentUser() admin: AuthenticatedUser,
+  ) {
     return this.service.dismiss(id, admin.userId, dto.resolutionNote);
   }
 }

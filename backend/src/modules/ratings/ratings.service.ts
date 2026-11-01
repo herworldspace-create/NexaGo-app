@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 import { RideStatus } from '../../common/enums/ride-status.enum';
 import { SubmitRatingDto } from './dto/submit-rating.dto';
@@ -62,8 +67,14 @@ export class RatingsService {
 
   async getProfileRatingSummary(userId: string, isDriver: boolean) {
     const profile = isDriver
-      ? await this.prisma.driverProfile.findUnique({ where: { userId }, select: { ratingsSum: true, ratingsCount: true } })
-      : await this.prisma.passengerProfile.findUnique({ where: { userId }, select: { ratingsSum: true, ratingsCount: true } });
+      ? await this.prisma.driverProfile.findUnique({
+          where: { userId },
+          select: { ratingsSum: true, ratingsCount: true },
+        })
+      : await this.prisma.passengerProfile.findUnique({
+          where: { userId },
+          select: { ratingsSum: true, ratingsCount: true },
+        });
 
     if (!profile || profile.ratingsCount === 0) {
       return { average: null, count: 0 };
@@ -77,7 +88,11 @@ export class RatingsService {
    * always derived (sum / count) rather than stored, so it can never
    * drift out of sync with its inputs.
    */
-  private async applyRatingToProfile(ratedUserId: string, ratedIsDriver: boolean, score: number): Promise<void> {
+  private async applyRatingToProfile(
+    ratedUserId: string,
+    ratedIsDriver: boolean,
+    score: number,
+  ): Promise<void> {
     if (ratedIsDriver) {
       await this.prisma.driverProfile.updateMany({
         where: { userId: ratedUserId },

@@ -24,10 +24,6 @@ export interface StorageProvider {
 
 export const STORAGE_PROVIDER = Symbol('STORAGE_PROVIDER');
 
-export const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'application/pdf',
-]);
+export const ALLOWED_DOCUMENT_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf']);
 
 export const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB

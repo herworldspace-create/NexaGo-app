@@ -13,8 +13,11 @@ import { RealSmsProvider } from './providers/real-sms.provider';
     {
       provide: SMS_PROVIDER,
       inject: [AppConfigService, ConsoleSmsProvider, RealSmsProvider],
-      useFactory: (config: AppConfigService, consoleProvider: ConsoleSmsProvider, realProvider: RealSmsProvider) =>
-        config.otp.provider === 'sms' ? realProvider : consoleProvider,
+      useFactory: (
+        config: AppConfigService,
+        consoleProvider: ConsoleSmsProvider,
+        realProvider: RealSmsProvider,
+      ) => (config.otp.provider === 'sms' ? realProvider : consoleProvider),
     },
   ],
   exports: [SMS_PROVIDER],

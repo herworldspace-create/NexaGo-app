@@ -23,9 +23,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
-    const status = isHttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message = isHttpException
       ? exception.getResponse()
@@ -42,7 +40,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       path: request.url,
       timestamp: new Date().toISOString(),
-      message: typeof message === 'string' ? message : (message as Record<string, unknown>).message ?? message,
+      message:
+        typeof message === 'string'
+          ? message
+          : ((message as Record<string, unknown>).message ?? message),
     });
   }
 }

@@ -21,12 +21,20 @@ describe('RideNotificationsListener', () => {
     });
 
     expect(notifications.notify).toHaveBeenCalledTimes(2);
-    expect(notifications.notify).toHaveBeenCalledWith('driver-1', expect.objectContaining({ type: 'ride.dispatch' }), {
-      rideId: 'ride-1',
-    });
-    expect(notifications.notify).toHaveBeenCalledWith('driver-2', expect.objectContaining({ type: 'ride.dispatch' }), {
-      rideId: 'ride-1',
-    });
+    expect(notifications.notify).toHaveBeenCalledWith(
+      'driver-1',
+      expect.objectContaining({ type: 'ride.dispatch' }),
+      {
+        rideId: 'ride-1',
+      },
+    );
+    expect(notifications.notify).toHaveBeenCalledWith(
+      'driver-2',
+      expect.objectContaining({ type: 'ride.dispatch' }),
+      {
+        rideId: 'ride-1',
+      },
+    );
   });
 
   it('does not crash the process if computing dispatch candidates throws', async () => {
@@ -34,7 +42,11 @@ describe('RideNotificationsListener', () => {
     ridesService.findEligibleDriverUserIdsForDispatch.mockRejectedValue(new Error('db down'));
 
     await expect(
-      listener.handleRideStatusChanged({ rideId: 'ride-1', status: RideStatus.REQUESTED, passengerUserId: 'p1' }),
+      listener.handleRideStatusChanged({
+        rideId: 'ride-1',
+        status: RideStatus.REQUESTED,
+        passengerUserId: 'p1',
+      }),
     ).resolves.toBeUndefined();
     expect(notifications.notify).not.toHaveBeenCalled();
   });
@@ -51,9 +63,13 @@ describe('RideNotificationsListener', () => {
 
     expect(ridesService.findEligibleDriverUserIdsForDispatch).not.toHaveBeenCalled();
     expect(notifications.notify).toHaveBeenCalledTimes(1);
-    expect(notifications.notify).toHaveBeenCalledWith('passenger-1', expect.objectContaining({ type: 'ride.accepted' }), {
-      rideId: 'ride-1',
-    });
+    expect(notifications.notify).toHaveBeenCalledWith(
+      'passenger-1',
+      expect.objectContaining({ type: 'ride.accepted' }),
+      {
+        rideId: 'ride-1',
+      },
+    );
   });
 
   it('notifies both parties on a passenger cancellation (driver told, passenger not — it was their own action)', async () => {
@@ -67,9 +83,13 @@ describe('RideNotificationsListener', () => {
     });
 
     expect(notifications.notify).toHaveBeenCalledTimes(1);
-    expect(notifications.notify).toHaveBeenCalledWith('driver-1', expect.objectContaining({ type: 'ride.cancelled' }), {
-      rideId: 'ride-1',
-    });
+    expect(notifications.notify).toHaveBeenCalledWith(
+      'driver-1',
+      expect.objectContaining({ type: 'ride.cancelled' }),
+      {
+        rideId: 'ride-1',
+      },
+    );
   });
 
   it('does nothing when there is no content mapped for a (audience, status) pair', async () => {

@@ -1,5 +1,8 @@
 import { DeliveryStatus } from '../../common/enums/delivery-status.enum';
-import { assertValidDeliveryTransition, InvalidDeliveryStatusTransitionError } from './delivery-status.state-machine';
+import {
+  assertValidDeliveryTransition,
+  InvalidDeliveryStatusTransitionError,
+} from './delivery-status.state-machine';
 
 describe('delivery status state machine', () => {
   it('allows the full happy path exactly as specified', () => {
@@ -16,9 +19,9 @@ describe('delivery status state machine', () => {
   });
 
   it('rejects skipping straight from REQUESTED to DELIVERED', () => {
-    expect(() => assertValidDeliveryTransition(DeliveryStatus.REQUESTED, DeliveryStatus.DELIVERED)).toThrow(
-      InvalidDeliveryStatusTransitionError,
-    );
+    expect(() =>
+      assertValidDeliveryTransition(DeliveryStatus.REQUESTED, DeliveryStatus.DELIVERED),
+    ).toThrow(InvalidDeliveryStatusTransitionError);
   });
 
   it('rejects any transition out of a terminal state', () => {
@@ -30,18 +33,24 @@ describe('delivery status state machine', () => {
       DeliveryStatus.NO_DRIVERS_AVAILABLE,
     ];
     for (const status of terminal) {
-      expect(() => assertValidDeliveryTransition(status, DeliveryStatus.PACKAGE_PICKUP_PENDING)).toThrow(
-        InvalidDeliveryStatusTransitionError,
-      );
+      expect(() =>
+        assertValidDeliveryTransition(status, DeliveryStatus.PACKAGE_PICKUP_PENDING),
+      ).toThrow(InvalidDeliveryStatusTransitionError);
     }
   });
 
   it('only allows sender/driver cancellation before pickup is confirmed', () => {
     expect(() =>
-      assertValidDeliveryTransition(DeliveryStatus.PACKAGE_PICKUP_PENDING, DeliveryStatus.CANCELLED_BY_SENDER),
+      assertValidDeliveryTransition(
+        DeliveryStatus.PACKAGE_PICKUP_PENDING,
+        DeliveryStatus.CANCELLED_BY_SENDER,
+      ),
     ).not.toThrow();
     expect(() =>
-      assertValidDeliveryTransition(DeliveryStatus.PACKAGE_PICKED_UP, DeliveryStatus.CANCELLED_BY_SENDER),
+      assertValidDeliveryTransition(
+        DeliveryStatus.PACKAGE_PICKED_UP,
+        DeliveryStatus.CANCELLED_BY_SENDER,
+      ),
     ).toThrow(InvalidDeliveryStatusTransitionError);
   });
 });

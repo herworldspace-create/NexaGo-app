@@ -43,7 +43,9 @@ export class DeliveriesService {
   // --- Sender side -----------------------------------------------------------
 
   async createDelivery(senderUserId: string, dto: CreateDeliveryDto) {
-    const category = await this.prisma.vehicleCategory.findUnique({ where: { id: dto.vehicleCategoryId } });
+    const category = await this.prisma.vehicleCategory.findUnique({
+      where: { id: dto.vehicleCategoryId },
+    });
     if (!category || category.type !== (VehicleCategoryType.DELIVERY as any)) {
       throw new BadRequestException('Selected vehicle category is not a delivery category.');
     }
@@ -55,7 +57,9 @@ export class DeliveriesService {
       },
     });
     if (existingActive) {
-      throw new BadRequestException('You already have an active delivery request or delivery in progress.');
+      throw new BadRequestException(
+        'You already have an active delivery request or delivery in progress.',
+      );
     }
 
     // Reuses the exact same fixed-price fare engine as rides — one
@@ -124,7 +128,13 @@ export class DeliveriesService {
       orderBy: { requestedAt: 'desc' },
       include: {
         parcel: {
-          select: { category: true, weightTier: true, recipientName: true, recipientPhone: true, deliveryNotes: true },
+          select: {
+            category: true,
+            weightTier: true,
+            recipientName: true,
+            recipientPhone: true,
+            deliveryNotes: true,
+          },
         },
       },
     });
@@ -172,7 +182,10 @@ export class DeliveriesService {
       return [];
     }
 
-    const driverPoint = { latitude: driverProfile.location.latitude, longitude: driverProfile.location.longitude };
+    const driverPoint = {
+      latitude: driverProfile.location.latitude,
+      longitude: driverProfile.location.longitude,
+    };
     const box = boundingBox(driverPoint, MAX_MATCHING_RADIUS_KM);
 
     const candidates = await this.prisma.delivery.findMany({
@@ -189,7 +202,10 @@ export class DeliveriesService {
     return candidates
       .map((delivery) => ({
         ...delivery,
-        distanceKm: haversineDistanceKm(driverPoint, { latitude: delivery.pickupLat, longitude: delivery.pickupLng }),
+        distanceKm: haversineDistanceKm(driverPoint, {
+          latitude: delivery.pickupLat,
+          longitude: delivery.pickupLng,
+        }),
       }))
       .filter((delivery) => delivery.distanceKm <= MAX_MATCHING_RADIUS_KM)
       .sort((a, b) => a.distanceKm - b.distanceKm)
@@ -224,7 +240,9 @@ export class DeliveriesService {
       (v) => v.isActive && v.vehicleCategoryId === delivery.vehicleCategoryId,
     );
     if (!matchingVehicle) {
-      throw new BadRequestException('You do not have an active vehicle registered for this delivery category.');
+      throw new BadRequestException(
+        'You do not have an active vehicle registered for this delivery category.',
+      );
     }
 
     const result = await this.prisma.delivery.updateMany({
@@ -238,7 +256,9 @@ export class DeliveriesService {
     });
 
     if (result.count === 0) {
-      throw new ConflictException('This delivery is no longer available — another courier may have accepted it.');
+      throw new ConflictException(
+        'This delivery is no longer available — another courier may have accepted it.',
+      );
     }
 
     await this.recordHistory(deliveryId, DeliveryStatus.PACKAGE_PICKUP_PENDING, driverUserId);
@@ -247,7 +267,10 @@ export class DeliveriesService {
 
   async markPickedUp(deliveryId: string, driverUserId: string) {
     const delivery = await this.getOwnedByDriver(deliveryId, driverUserId);
-    assertValidDeliveryTransition(delivery.status as unknown as DeliveryStatus, DeliveryStatus.PACKAGE_PICKED_UP);
+    assertValidDeliveryTransition(
+      delivery.status as unknown as DeliveryStatus,
+      DeliveryStatus.PACKAGE_PICKED_UP,
+    );
 
     await this.prisma.delivery.update({
       where: { id: deliveryId },
@@ -259,7 +282,10 @@ export class DeliveriesService {
 
   async startTransit(deliveryId: string, driverUserId: string) {
     const delivery = await this.getOwnedByDriver(deliveryId, driverUserId);
-    assertValidDeliveryTransition(delivery.status as unknown as DeliveryStatus, DeliveryStatus.IN_TRANSIT);
+    assertValidDeliveryTransition(
+      delivery.status as unknown as DeliveryStatus,
+      DeliveryStatus.IN_TRANSIT,
+    );
 
     await this.prisma.delivery.update({
       where: { id: deliveryId },
@@ -285,7 +311,10 @@ export class DeliveriesService {
    */
   async completeDelivery(deliveryId: string, driverUserId: string, pin: string) {
     const delivery = await this.getOwnedByDriver(deliveryId, driverUserId);
-    assertValidDeliveryTransition(delivery.status as unknown as DeliveryStatus, DeliveryStatus.DELIVERED);
+    assertValidDeliveryTransition(
+      delivery.status as unknown as DeliveryStatus,
+      DeliveryStatus.DELIVERED,
+    );
 
     const parcel = await this.prisma.parcel.findUnique({ where: { deliveryId } });
     if (!parcel) {
@@ -340,7 +369,9 @@ export class DeliveriesService {
       where: { status: { in: Array.from(ACTIVE_DELIVERY_STATUSES) as any } },
       select: { driverUserId: true },
     });
-    const busyDriverUserIds = new Set(busyDeliveries.map((d) => d.driverUserId).filter((id): id is string => Boolean(id)));
+    const busyDriverUserIds = new Set(
+      busyDeliveries.map((d) => d.driverUserId).filter((id): id is string => Boolean(id)),
+    );
 
     const eligible: string[] = [];
     for (const location of candidateLocations) {
@@ -369,7 +400,8 @@ export class DeliveriesService {
 
   async getDelivery(deliveryId: string, requestingUserId: string, requestingRole: Role) {
     const delivery = await this.getRequiredDelivery(deliveryId);
-    const isParty = delivery.senderUserId === requestingUserId || delivery.driverUserId === requestingUserId;
+    const isParty =
+      delivery.senderUserId === requestingUserId || delivery.driverUserId === requestingUserId;
     const isAdmin = requestingRole === Role.ADMIN || requestingRole === Role.SUPER_ADMIN;
     if (!isParty && !isAdmin) {
       throw new ForbiddenException('You do not have access to this delivery.');
@@ -393,7 +425,12 @@ export class DeliveriesService {
 
     await this.prisma.delivery.update({
       where: { id: delivery.id },
-      data: { status: targetStatus as any, cancelledAt: new Date(), cancelledBy: by as any, cancellationReason: reason },
+      data: {
+        status: targetStatus as any,
+        cancelledAt: new Date(),
+        cancelledBy: by as any,
+        cancellationReason: reason,
+      },
     });
     await this.recordHistory(delivery.id, targetStatus, actorUserId, reason);
     return this.getRequiredDelivery(delivery.id);
@@ -415,7 +452,12 @@ export class DeliveriesService {
     return delivery;
   }
 
-  private async recordHistory(deliveryId: string, status: DeliveryStatus, changedByUserId?: string, reason?: string) {
+  private async recordHistory(
+    deliveryId: string,
+    status: DeliveryStatus,
+    changedByUserId?: string,
+    reason?: string,
+  ) {
     await this.prisma.deliveryStatusHistory.create({
       data: { deliveryId, status: status as any, changedByUserId, reason },
     });

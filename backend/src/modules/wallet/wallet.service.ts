@@ -18,7 +18,12 @@ export class WalletService {
    * recorded against the ledger entry). Runs the balance increment and
    * the ledger entry in one DB transaction so the two can never diverge.
    */
-  async creditForJob(driverProfileId: string, referenceId: string, amountKobo: number, description: string) {
+  async creditForJob(
+    driverProfileId: string,
+    referenceId: string,
+    amountKobo: number,
+    description: string,
+  ) {
     if (amountKobo <= 0) return; // nothing to credit (e.g. 100% commission edge case)
 
     const wallet = await this.getOrCreateWallet(driverProfileId);
@@ -122,7 +127,9 @@ export class WalletService {
     return this.prisma.withdrawal.findMany({
       where: status ? { status: status as any } : {},
       orderBy: { requestedAt: 'desc' },
-      include: { wallet: { include: { driverProfile: { select: { userId: true, fullName: true } } } } },
+      include: {
+        wallet: { include: { driverProfile: { select: { userId: true, fullName: true } } } },
+      },
     });
   }
 
@@ -135,12 +142,19 @@ export class WalletService {
    * wallet atomically, so a failed payout never leaves the driver
    * permanently short.
    */
-  async resolveWithdrawal(withdrawalId: string, outcome: 'COMPLETED' | 'FAILED' | 'REJECTED', failureReason?: string) {
+  async resolveWithdrawal(
+    withdrawalId: string,
+    outcome: 'COMPLETED' | 'FAILED' | 'REJECTED',
+    failureReason?: string,
+  ) {
     const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
     if (!withdrawal) {
       throw new NotFoundException('Withdrawal request not found.');
     }
-    if (withdrawal.status !== (WithdrawalStatus.PENDING as any) && withdrawal.status !== (WithdrawalStatus.PROCESSING as any)) {
+    if (
+      withdrawal.status !== (WithdrawalStatus.PENDING as any) &&
+      withdrawal.status !== (WithdrawalStatus.PROCESSING as any)
+    ) {
       throw new BadRequestException('This withdrawal has already been resolved.');
     }
 
@@ -168,7 +182,9 @@ export class WalletService {
       return tx.withdrawal.update({
         where: { id: withdrawalId },
         data: {
-          status: (outcome === 'FAILED' ? WithdrawalStatus.FAILED : WithdrawalStatus.REJECTED) as any,
+          status: (outcome === 'FAILED'
+            ? WithdrawalStatus.FAILED
+            : WithdrawalStatus.REJECTED) as any,
           processedAt: new Date(),
           failureReason,
         },

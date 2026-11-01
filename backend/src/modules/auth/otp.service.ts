@@ -47,7 +47,10 @@ export class OtpService {
       data: { phone, purpose, codeHash, maxAttempts, expiresAt, requestIp },
     });
 
-    await this.smsProvider.send(phone, `Your NEXA verification code is ${code}. It expires in ${Math.round(ttlSeconds / 60)} minutes.`);
+    await this.smsProvider.send(
+      phone,
+      `Your NEXA verification code is ${code}. It expires in ${Math.round(ttlSeconds / 60)} minutes.`,
+    );
   }
 
   async verifyOtp(phone: string, purpose: OtpPurpose, code: string): Promise<void> {

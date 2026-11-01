@@ -4,7 +4,10 @@ import { PrismaService } from '../../config/prisma.service';
 import { OtpService } from './otp.service';
 import { TokenService, TokenPair } from './token.service';
 import { Role } from '../../common/enums/role.enum';
-import { PassengerVerificationStatus, DriverVerificationStatus } from '../../common/enums/verification-status.enum';
+import {
+  PassengerVerificationStatus,
+  DriverVerificationStatus,
+} from '../../common/enums/verification-status.enum';
 import * as bcrypt from 'bcrypt';
 
 interface RequestContext {

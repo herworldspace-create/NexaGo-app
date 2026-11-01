@@ -14,7 +14,9 @@ export class DriverLocationService {
   constructor(private readonly prisma: PrismaService) {}
 
   async update(params: UpdateLocationParams) {
-    const profile = await this.prisma.driverProfile.findUnique({ where: { userId: params.userId } });
+    const profile = await this.prisma.driverProfile.findUnique({
+      where: { userId: params.userId },
+    });
     if (!profile) {
       throw new NotFoundException('Driver profile not found.');
     }

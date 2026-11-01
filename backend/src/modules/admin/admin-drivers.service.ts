@@ -1,8 +1,14 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 import { Role } from '../../common/enums/role.enum';
-import { DocumentStatus, DriverVerificationStatus } from '../../common/enums/verification-status.enum';
-import { assertValidTransition, canAcceptRides } from '../driver-verification/driver-verification.state-machine';
+import {
+  DocumentStatus,
+  DriverVerificationStatus,
+} from '../../common/enums/verification-status.enum';
+import {
+  assertValidTransition,
+  canAcceptRides,
+} from '../driver-verification/driver-verification.state-machine';
 import { MANDATORY_DRIVER_DOCUMENT_TYPES } from '../driver-verification/mandatory-documents.const';
 import { STORAGE_PROVIDER, StorageProvider } from '../documents/storage-provider.interface';
 import { ListDriversQueryDto } from './dto/list-drivers-query.dto';
@@ -68,14 +74,23 @@ export class AdminDriversService {
     const identityVerification = await this.prisma.identityVerification.findFirst({
       where: { userId: profile.userId },
       orderBy: { createdAt: 'desc' },
-      select: { status: true, provider: true, providerReference: true, verifiedFullName: true, verifiedAt: true, failureReason: true },
+      select: {
+        status: true,
+        provider: true,
+        providerReference: true,
+        verifiedFullName: true,
+        verifiedAt: true,
+        failureReason: true,
+      },
     });
 
     const canElevated = requestingRole === Role.SUPER_ADMIN;
 
     return {
       ...profile,
-      canAcceptRides: canAcceptRides(profile.verificationStatus as unknown as DriverVerificationStatus),
+      canAcceptRides: canAcceptRides(
+        profile.verificationStatus as unknown as DriverVerificationStatus,
+      ),
       identityVerification: identityVerification
         ? {
             status: identityVerification.status,
@@ -83,8 +98,12 @@ export class AdminDriversService {
             verifiedAt: identityVerification.verifiedAt,
             failureReason: identityVerification.failureReason,
             // Masked for regular admins; full detail only for SUPER_ADMIN.
-            verifiedFullName: canElevated ? identityVerification.verifiedFullName : this.mask(identityVerification.verifiedFullName),
-            providerReference: canElevated ? identityVerification.providerReference : this.mask(identityVerification.providerReference),
+            verifiedFullName: canElevated
+              ? identityVerification.verifiedFullName
+              : this.mask(identityVerification.verifiedFullName),
+            providerReference: canElevated
+              ? identityVerification.providerReference
+              : this.mask(identityVerification.providerReference),
           }
         : null,
     };
@@ -95,7 +114,10 @@ export class AdminDriversService {
     if (!document) {
       throw new NotFoundException('Document not found.');
     }
-    const url = await this.storage.getSignedReadUrl(document.storagePath, DOCUMENT_URL_EXPIRY_SECONDS);
+    const url = await this.storage.getSignedReadUrl(
+      document.storagePath,
+      DOCUMENT_URL_EXPIRY_SECONDS,
+    );
     return { url, expiresInSeconds: DOCUMENT_URL_EXPIRY_SECONDS };
   }
 
@@ -111,7 +133,11 @@ export class AdminDriversService {
 
     const updated = await this.prisma.driverDocument.update({
       where: { id: documentId },
-      data: { status: DocumentStatus.APPROVED as any, rejectionReason: null, reviewedAt: new Date() },
+      data: {
+        status: DocumentStatus.APPROVED as any,
+        rejectionReason: null,
+        reviewedAt: new Date(),
+      },
     });
 
     await this.maybeAdvancePastDocumentReview(document.driverProfileId);
@@ -126,12 +152,24 @@ export class AdminDriversService {
 
     const updated = await this.prisma.driverDocument.update({
       where: { id: documentId },
-      data: { status: DocumentStatus.REJECTED as any, rejectionReason: reason, reviewedAt: new Date() },
+      data: {
+        status: DocumentStatus.REJECTED as any,
+        rejectionReason: reason,
+        reviewedAt: new Date(),
+      },
     });
 
-    const profile = await this.prisma.driverProfile.findUnique({ where: { id: document.driverProfileId } });
-    if (profile && profile.verificationStatus === (DriverVerificationStatus.DOCUMENT_REVIEW as any)) {
-      assertValidTransition(DriverVerificationStatus.DOCUMENT_REVIEW, DriverVerificationStatus.DOCUMENT_REJECTED);
+    const profile = await this.prisma.driverProfile.findUnique({
+      where: { id: document.driverProfileId },
+    });
+    if (
+      profile &&
+      profile.verificationStatus === (DriverVerificationStatus.DOCUMENT_REVIEW as any)
+    ) {
+      assertValidTransition(
+        DriverVerificationStatus.DOCUMENT_REVIEW,
+        DriverVerificationStatus.DOCUMENT_REJECTED,
+      );
       await this.prisma.driverProfile.update({
         where: { id: document.driverProfileId },
         data: { verificationStatus: DriverVerificationStatus.DOCUMENT_REJECTED as any },
@@ -149,7 +187,10 @@ export class AdminDriversService {
    */
   private async maybeAdvancePastDocumentReview(driverProfileId: string): Promise<void> {
     const profile = await this.prisma.driverProfile.findUnique({ where: { id: driverProfileId } });
-    if (!profile || profile.verificationStatus !== (DriverVerificationStatus.DOCUMENT_REVIEW as any)) {
+    if (
+      !profile ||
+      profile.verificationStatus !== (DriverVerificationStatus.DOCUMENT_REVIEW as any)
+    ) {
       return;
     }
 
@@ -166,7 +207,10 @@ export class AdminDriversService {
     });
 
     if (allMandatorySatisfied) {
-      assertValidTransition(DriverVerificationStatus.DOCUMENT_REVIEW, DriverVerificationStatus.ADMIN_REVIEW);
+      assertValidTransition(
+        DriverVerificationStatus.DOCUMENT_REVIEW,
+        DriverVerificationStatus.ADMIN_REVIEW,
+      );
       await this.prisma.driverProfile.update({
         where: { id: driverProfileId },
         data: { verificationStatus: DriverVerificationStatus.ADMIN_REVIEW as any },
@@ -202,7 +246,10 @@ export class AdminDriversService {
 
   async approveDriver(driverProfileId: string) {
     const profile = await this.getRequiredProfile(driverProfileId);
-    assertValidTransition(profile.verificationStatus as unknown as DriverVerificationStatus, DriverVerificationStatus.APPROVED);
+    assertValidTransition(
+      profile.verificationStatus as unknown as DriverVerificationStatus,
+      DriverVerificationStatus.APPROVED,
+    );
     return this.prisma.driverProfile.update({
       where: { id: driverProfileId },
       data: { verificationStatus: DriverVerificationStatus.APPROVED as any },
@@ -211,7 +258,10 @@ export class AdminDriversService {
 
   async activateDriver(driverProfileId: string) {
     const profile = await this.getRequiredProfile(driverProfileId);
-    assertValidTransition(profile.verificationStatus as unknown as DriverVerificationStatus, DriverVerificationStatus.ACTIVE);
+    assertValidTransition(
+      profile.verificationStatus as unknown as DriverVerificationStatus,
+      DriverVerificationStatus.ACTIVE,
+    );
     return this.prisma.driverProfile.update({
       where: { id: driverProfileId },
       data: { verificationStatus: DriverVerificationStatus.ACTIVE as any },
@@ -220,7 +270,10 @@ export class AdminDriversService {
 
   async rejectDriver(driverProfileId: string, reason: string) {
     const profile = await this.getRequiredProfile(driverProfileId);
-    assertValidTransition(profile.verificationStatus as unknown as DriverVerificationStatus, DriverVerificationStatus.ADMIN_REJECTED);
+    assertValidTransition(
+      profile.verificationStatus as unknown as DriverVerificationStatus,
+      DriverVerificationStatus.ADMIN_REJECTED,
+    );
     // Rejection reason is captured in the audit log via AuditLogInterceptor
     // (request body). If a dedicated visible-to-driver reason field is
     // needed later, add a column rather than overloading this one.
@@ -233,7 +286,10 @@ export class AdminDriversService {
 
   async suspendDriver(driverProfileId: string) {
     const profile = await this.getRequiredProfile(driverProfileId);
-    assertValidTransition(profile.verificationStatus as unknown as DriverVerificationStatus, DriverVerificationStatus.SUSPENDED);
+    assertValidTransition(
+      profile.verificationStatus as unknown as DriverVerificationStatus,
+      DriverVerificationStatus.SUSPENDED,
+    );
     return this.prisma.driverProfile.update({
       where: { id: driverProfileId },
       data: { verificationStatus: DriverVerificationStatus.SUSPENDED as any },
@@ -242,7 +298,10 @@ export class AdminDriversService {
 
   async reactivateDriver(driverProfileId: string) {
     const profile = await this.getRequiredProfile(driverProfileId);
-    assertValidTransition(profile.verificationStatus as unknown as DriverVerificationStatus, DriverVerificationStatus.ACTIVE);
+    assertValidTransition(
+      profile.verificationStatus as unknown as DriverVerificationStatus,
+      DriverVerificationStatus.ACTIVE,
+    );
     return this.prisma.driverProfile.update({
       where: { id: driverProfileId },
       data: { verificationStatus: DriverVerificationStatus.ACTIVE as any },

@@ -7,7 +7,11 @@ import { PrismaService } from '../../config/prisma.service';
 function buildContext(params: { user?: any; routeParams?: any; body?: any }): ExecutionContext {
   return {
     switchToHttp: () => ({
-      getRequest: () => ({ user: params.user, params: params.routeParams ?? {}, body: params.body ?? {} }),
+      getRequest: () => ({
+        user: params.user,
+        params: params.routeParams ?? {},
+        body: params.body ?? {},
+      }),
     }),
     getHandler: () => ({}),
     getClass: () => ({}),
@@ -22,7 +26,9 @@ describe('AuditLogInterceptor', () => {
   it('does nothing when the route has no @AuditLog metadata', (done) => {
     const create = jest.fn();
     const reflector = { getAllAndOverride: () => undefined } as unknown as Reflector;
-    const interceptor = new AuditLogInterceptor(reflector, { adminAuditLog: { create } } as unknown as PrismaService);
+    const interceptor = new AuditLogInterceptor(reflector, {
+      adminAuditLog: { create },
+    } as unknown as PrismaService);
 
     interceptor
       .intercept(buildContext({ user: { userId: 'admin-1' } }), buildHandler({ id: 'x' }))
@@ -35,9 +41,14 @@ describe('AuditLogInterceptor', () => {
   it('writes an audit log referencing the responding entity id and redacts sensitive body fields', (done) => {
     const create = jest.fn();
     const reflector = {
-      getAllAndOverride: () => ({ action: 'DRIVER_DOCUMENT_APPROVED', targetType: 'DriverDocument' }),
+      getAllAndOverride: () => ({
+        action: 'DRIVER_DOCUMENT_APPROVED',
+        targetType: 'DriverDocument',
+      }),
     } as unknown as Reflector;
-    const interceptor = new AuditLogInterceptor(reflector, { adminAuditLog: { create } } as unknown as PrismaService);
+    const interceptor = new AuditLogInterceptor(reflector, {
+      adminAuditLog: { create },
+    } as unknown as PrismaService);
 
     interceptor
       .intercept(
@@ -64,9 +75,14 @@ describe('AuditLogInterceptor', () => {
   it('never writes a log if there is no authenticated actor', (done) => {
     const create = jest.fn();
     const reflector = {
-      getAllAndOverride: () => ({ action: 'DRIVER_DOCUMENT_APPROVED', targetType: 'DriverDocument' }),
+      getAllAndOverride: () => ({
+        action: 'DRIVER_DOCUMENT_APPROVED',
+        targetType: 'DriverDocument',
+      }),
     } as unknown as Reflector;
-    const interceptor = new AuditLogInterceptor(reflector, { adminAuditLog: { create } } as unknown as PrismaService);
+    const interceptor = new AuditLogInterceptor(reflector, {
+      adminAuditLog: { create },
+    } as unknown as PrismaService);
 
     interceptor
       .intercept(buildContext({ user: undefined }), buildHandler({ id: 'doc-1' }))

@@ -26,7 +26,8 @@ export class RouteService {
     if (!ride) {
       throw new NotFoundException('Ride not found.');
     }
-    const isParty = ride.passengerUserId === requestingUserId || ride.driverUserId === requestingUserId;
+    const isParty =
+      ride.passengerUserId === requestingUserId || ride.driverUserId === requestingUserId;
     const isAdmin = requestingRole === Role.ADMIN || requestingRole === Role.SUPER_ADMIN;
     if (!isParty && !isAdmin) {
       throw new ForbiddenException('You do not have access to this ride.');
@@ -37,7 +38,10 @@ export class RouteService {
 
     const tripUnderway = ride.status === (RideStatus.IN_PROGRESS as any);
     if (tripUnderway) {
-      return { leg: 'to_destination' as const, ...(await this.routeProvider.getRoute(pickup, destination)) };
+      return {
+        leg: 'to_destination' as const,
+        ...(await this.routeProvider.getRoute(pickup, destination)),
+      };
     }
 
     if (ride.driverUserId && ACTIVE_RIDE_STATUSES.has(ride.status as unknown as RideStatus)) {
@@ -46,11 +50,20 @@ export class RouteService {
         include: { location: true },
       });
       if (driverProfile?.location) {
-        const driverPoint = { latitude: driverProfile.location.latitude, longitude: driverProfile.location.longitude };
-        return { leg: 'driver_to_pickup' as const, ...(await this.routeProvider.getRoute(driverPoint, pickup)) };
+        const driverPoint = {
+          latitude: driverProfile.location.latitude,
+          longitude: driverProfile.location.longitude,
+        };
+        return {
+          leg: 'driver_to_pickup' as const,
+          ...(await this.routeProvider.getRoute(driverPoint, pickup)),
+        };
       }
     }
 
-    return { leg: 'pickup_to_destination' as const, ...(await this.routeProvider.getRoute(pickup, destination)) };
+    return {
+      leg: 'pickup_to_destination' as const,
+      ...(await this.routeProvider.getRoute(pickup, destination)),
+    };
   }
 }

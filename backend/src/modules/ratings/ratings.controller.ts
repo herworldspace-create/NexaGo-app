@@ -9,7 +9,11 @@ export class RatingsController {
   constructor(private readonly ratingsService: RatingsService) {}
 
   @Post(':id/rating')
-  async submit(@Param('id') rideId: string, @Body() dto: SubmitRatingDto, @CurrentUser() user: AuthenticatedUser) {
+  async submit(
+    @Param('id') rideId: string,
+    @Body() dto: SubmitRatingDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.ratingsService.submitRating(rideId, user.userId, dto);
   }
 

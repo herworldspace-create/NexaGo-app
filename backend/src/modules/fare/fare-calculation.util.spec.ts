@@ -1,4 +1,9 @@
-import { computeFare, InvalidFareInputError, koboToNaira, FareConfigInput } from './fare-calculation.util';
+import {
+  computeFare,
+  InvalidFareInputError,
+  koboToNaira,
+  FareConfigInput,
+} from './fare-calculation.util';
 
 function buildConfig(overrides: Partial<FareConfigInput> = {}): FareConfigInput {
   return {
@@ -101,7 +106,11 @@ describe('computeFare', () => {
   });
 
   it('treats an explicit 1.00x surge as a no-op', () => {
-    const withoutSurge = computeFare({ config: buildConfig({ minimumFareKobo: 0 }), distanceKm: 10, durationMinutes: 20 });
+    const withoutSurge = computeFare({
+      config: buildConfig({ minimumFareKobo: 0 }),
+      distanceKm: 10,
+      durationMinutes: 20,
+    });
     const withNeutralSurge = computeFare({
       config: buildConfig({ minimumFareKobo: 0 }),
       distanceKm: 10,
@@ -113,17 +122,22 @@ describe('computeFare', () => {
 
   it('rejects a surge multiplier below 1.00x (no discounting via surge)', () => {
     expect(() =>
-      computeFare({ config: buildConfig(), distanceKm: 5, durationMinutes: 5, surgeMultiplierBasisPoints: 9_000 }),
+      computeFare({
+        config: buildConfig(),
+        distanceKm: 5,
+        durationMinutes: 5,
+        surgeMultiplierBasisPoints: 9_000,
+      }),
     ).toThrow(InvalidFareInputError);
   });
 
   it('rejects negative distance or duration', () => {
-    expect(() => computeFare({ config: buildConfig(), distanceKm: -1, durationMinutes: 5 })).toThrow(
-      InvalidFareInputError,
-    );
-    expect(() => computeFare({ config: buildConfig(), distanceKm: 5, durationMinutes: -1 })).toThrow(
-      InvalidFareInputError,
-    );
+    expect(() =>
+      computeFare({ config: buildConfig(), distanceKm: -1, durationMinutes: 5 }),
+    ).toThrow(InvalidFareInputError);
+    expect(() =>
+      computeFare({ config: buildConfig(), distanceKm: 5, durationMinutes: -1 }),
+    ).toThrow(InvalidFareInputError);
   });
 
   it('rejects a negative fare configuration', () => {
@@ -139,7 +153,11 @@ describe('computeFare', () => {
 
   it('never produces a fractional-kobo amount', () => {
     const result = computeFare({
-      config: buildConfig({ perKmRateKobo: 3_333, serviceFeePercentBasisPoints: 777, minimumFareKobo: 0 }),
+      config: buildConfig({
+        perKmRateKobo: 3_333,
+        serviceFeePercentBasisPoints: 777,
+        minimumFareKobo: 0,
+      }),
       distanceKm: 7.777,
       durationMinutes: 13.5,
       surgeMultiplierBasisPoints: 12_345,
@@ -152,12 +170,20 @@ describe('computeFare', () => {
   });
 
   it('carries the currency through unchanged', () => {
-    const result = computeFare({ config: buildConfig({ currency: 'NGN' }), distanceKm: 1, durationMinutes: 1 });
+    const result = computeFare({
+      config: buildConfig({ currency: 'NGN' }),
+      distanceKm: 1,
+      durationMinutes: 1,
+    });
     expect(result.currency).toBe('NGN');
   });
 
   it('passes platformCommissionBasisPoints through unchanged (it is not part of the passenger total)', () => {
-    const withoutFee = computeFare({ config: buildConfig({ minimumFareKobo: 0 }), distanceKm: 10, durationMinutes: 10 });
+    const withoutFee = computeFare({
+      config: buildConfig({ minimumFareKobo: 0 }),
+      distanceKm: 10,
+      durationMinutes: 10,
+    });
     const withFee = computeFare({
       config: buildConfig({ minimumFareKobo: 0, platformCommissionBasisPoints: 2_000 }),
       distanceKm: 10,

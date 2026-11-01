@@ -52,7 +52,11 @@ export class RidesController {
 
   @Roles(Role.PASSENGER)
   @Post(':id/cancel')
-  async cancel(@Param('id') id: string, @Body() dto: CancelRideDto, @CurrentUser() user: AuthenticatedUser) {
+  async cancel(
+    @Param('id') id: string,
+    @Body() dto: CancelRideDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.ridesService.cancelByPassenger(id, user.userId, dto.reason);
   }
 }

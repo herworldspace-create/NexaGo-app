@@ -21,7 +21,9 @@ describe('AdminComplaintsService', () => {
 
   it('throws for a nonexistent complaint', async () => {
     prisma.complaint.findUnique.mockResolvedValue(null);
-    await expect(service.resolve('missing', 'admin-1', 'reason')).rejects.toThrow(NotFoundException);
+    await expect(service.resolve('missing', 'admin-1', 'reason')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('allows moving OPEN -> IN_REVIEW', async () => {

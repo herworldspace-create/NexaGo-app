@@ -27,17 +27,27 @@ export class DocumentsService {
   async uploadDriverDocument(params: UploadDriverDocumentParams) {
     this.validateFile(params.buffer, params.mimeType);
 
-    const driverProfile = await this.prisma.driverProfile.findUnique({ where: { userId: params.userId } });
+    const driverProfile = await this.prisma.driverProfile.findUnique({
+      where: { userId: params.userId },
+    });
     if (!driverProfile) {
       throw new NotFoundException('Driver profile not found.');
     }
 
     const key = `drivers/${driverProfile.id}/${params.type.toLowerCase()}/${randomUUID()}`;
-    const stored = await this.storage.store({ key, buffer: params.buffer, mimeType: params.mimeType });
+    const stored = await this.storage.store({
+      key,
+      buffer: params.buffer,
+      mimeType: params.mimeType,
+    });
 
     // Superseding: mark any previous document of the same type as replaced.
     await this.prisma.driverDocument.updateMany({
-      where: { driverProfileId: driverProfile.id, type: params.type, status: { not: DocumentStatus.SUPERSEDED as any } },
+      where: {
+        driverProfileId: driverProfile.id,
+        type: params.type,
+        status: { not: DocumentStatus.SUPERSEDED as any },
+      },
       data: { status: DocumentStatus.SUPERSEDED as any },
     });
 

@@ -49,7 +49,12 @@ export class UnconfiguredVtuProvider implements VtuProvider {
     return [
       { code: `${network}-1GB-30D`, name: '1GB - 30 days', priceKobo: 35_000, validity: '30 days' },
       { code: `${network}-2GB-30D`, name: '2GB - 30 days', priceKobo: 65_000, validity: '30 days' },
-      { code: `${network}-5GB-30D`, name: '5GB - 30 days', priceKobo: 150_000, validity: '30 days' },
+      {
+        code: `${network}-5GB-30D`,
+        name: '5GB - 30 days',
+        priceKobo: 150_000,
+        validity: '30 days',
+      },
     ];
   }
 }

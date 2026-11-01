@@ -33,7 +33,11 @@ export class AdminRidesController {
 
   @Post(':id/cancel')
   @AuditLog({ action: 'RIDE_CANCELLED_BY_ADMIN', targetType: 'Ride' })
-  async cancel(@Param('id') id: string, @Body() dto: AdminCancelRideDto, @CurrentUser() admin: AuthenticatedUser) {
+  async cancel(
+    @Param('id') id: string,
+    @Body() dto: AdminCancelRideDto,
+    @CurrentUser() admin: AuthenticatedUser,
+  ) {
     return this.service.cancel(id, admin.userId, dto.reason);
   }
 }

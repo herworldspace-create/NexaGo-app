@@ -22,7 +22,9 @@ export class MapboxRouteProvider implements RouteProvider {
   async getRoute(origin: RoutePoint, destination: RoutePoint): Promise<RouteResult> {
     const token = this.config.route.mapboxAccessToken;
     if (!token) {
-      throw new Error('MAPBOX_ACCESS_TOKEN is not configured. Set it in .env before using ROUTE_PROVIDER=mapbox.');
+      throw new Error(
+        'MAPBOX_ACCESS_TOKEN is not configured. Set it in .env before using ROUTE_PROVIDER=mapbox.',
+      );
     }
 
     // Mapbox expects "lng,lat" order (opposite of our lat/lng convention).
@@ -33,7 +35,9 @@ export class MapboxRouteProvider implements RouteProvider {
     const body = await response.json().catch(() => null);
 
     if (!response.ok || !body?.routes?.length) {
-      this.logger.error(`Mapbox Directions request failed: ${response.status} ${JSON.stringify(body)}`);
+      this.logger.error(
+        `Mapbox Directions request failed: ${response.status} ${JSON.stringify(body)}`,
+      );
       throw new Error(body?.message ?? 'Failed to fetch route from Mapbox.');
     }
 

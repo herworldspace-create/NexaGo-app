@@ -1,4 +1,11 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../config/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
@@ -7,7 +14,11 @@ import { Role } from '../../common/enums/role.enum';
 import { RideStatus } from '../../common/enums/ride-status.enum';
 import { DeliveryStatus } from '../../common/enums/delivery-status.enum';
 import { PaymentMethod, PaymentStatus } from '../../common/enums/payment.enum';
-import { PAYMENT_PROVIDER, PaymentProvider, WebhookEvent } from './interfaces/payment-provider.interface';
+import {
+  PAYMENT_PROVIDER,
+  PaymentProvider,
+  WebhookEvent,
+} from './interfaces/payment-provider.interface';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 
 export type PayableJobType = 'ride' | 'delivery';
@@ -82,19 +93,31 @@ export class PaymentsService {
       );
       await this.prisma.payment.update({
         where: { id: payment.id },
-        data: { status: PaymentStatus.FAILED as any, failureReason: 'Payment provider was unavailable.' },
+        data: {
+          status: PaymentStatus.FAILED as any,
+          failureReason: 'Payment provider was unavailable.',
+        },
       });
-      throw new BadRequestException('Could not start wallet funding right now. Please try again shortly.');
+      throw new BadRequestException(
+        'Could not start wallet funding right now. Please try again shortly.',
+      );
     }
   }
 
-  async initiatePayment(jobType: PayableJobType, jobId: string, payerUserId: string, dto: InitiatePaymentDto) {
+  async initiatePayment(
+    jobType: PayableJobType,
+    jobId: string,
+    payerUserId: string,
+    dto: InitiatePaymentDto,
+  ) {
     const job = await this.getRequiredPayableJob(jobType, jobId);
     if (job.payerUserId !== payerUserId) {
       throw new ForbiddenException(`This ${jobType} does not belong to you.`);
     }
     if (!job.isCompleted || job.finalFareKobo == null) {
-      throw new BadRequestException(`This ${jobType} must be completed before payment can be made.`);
+      throw new BadRequestException(
+        `This ${jobType} must be completed before payment can be made.`,
+      );
     }
 
     const existing = await this.findPaymentForJob(jobType, jobId);
@@ -135,13 +158,19 @@ export class PaymentsService {
 
     // CARD / BANK_TRANSFER — routed through the configured gateway (Paystack).
     if (!dto.email) {
-      throw new BadRequestException('An email address is required for card or bank transfer payments.');
+      throw new BadRequestException(
+        'An email address is required for card or bank transfer payments.',
+      );
     }
 
     const payment = existing
       ? await this.prisma.payment.update({
           where: { id: existing.id },
-          data: { method: dto.method as any, status: PaymentStatus.PROCESSING as any, failureReason: null },
+          data: {
+            method: dto.method as any,
+            status: PaymentStatus.PROCESSING as any,
+            failureReason: null,
+          },
         })
       : await this.prisma.payment.create({
           data: {
@@ -176,9 +205,14 @@ export class PaymentsService {
       );
       await this.prisma.payment.update({
         where: { id: payment.id },
-        data: { status: PaymentStatus.FAILED as any, failureReason: 'Payment provider was unavailable.' },
+        data: {
+          status: PaymentStatus.FAILED as any,
+          failureReason: 'Payment provider was unavailable.',
+        },
       });
-      throw new BadRequestException('Could not start the payment right now. Please try again shortly.');
+      throw new BadRequestException(
+        'Could not start the payment right now. Please try again shortly.',
+      );
     }
   }
 
@@ -201,7 +235,9 @@ export class PaymentsService {
     try {
       event = this.paymentProvider.parseWebhookEvent(rawBody);
     } catch (error) {
-      this.logger.warn(`Failed to parse webhook body: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Failed to parse webhook body: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return; // Acknowledge receipt; nothing we can safely act on.
     }
 
@@ -216,12 +252,19 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      this.logger.warn(`Webhook referenced an unknown payment reference: ${event.providerReference}`);
+      this.logger.warn(
+        `Webhook referenced an unknown payment reference: ${event.providerReference}`,
+      );
       return;
     }
 
     if (payment.status === (PaymentStatus.PAID as any)) {
-      await this.recordTransaction(payment.id, event, false, 'Duplicate webhook — payment already settled.');
+      await this.recordTransaction(
+        payment.id,
+        event,
+        false,
+        'Duplicate webhook — payment already settled.',
+      );
       return;
     }
 
@@ -231,7 +274,10 @@ export class PaymentsService {
       );
       await this.prisma.payment.update({
         where: { id: payment.id },
-        data: { status: PaymentStatus.FAILED as any, failureReason: 'Amount mismatch with payment provider.' },
+        data: {
+          status: PaymentStatus.FAILED as any,
+          failureReason: 'Amount mismatch with payment provider.',
+        },
       });
       await this.recordTransaction(payment.id, event, false, 'Rejected — amount mismatch.');
       return;
@@ -262,7 +308,11 @@ export class PaymentsService {
       if (job) {
         await this.creditDriverForJob(job, payment.amountKobo);
       } else if (payment.walletFundingUserId) {
-        await this.userWalletService.creditFromFunding(payment.walletFundingUserId, payment.amountKobo, payment.id);
+        await this.userWalletService.creditFromFunding(
+          payment.walletFundingUserId,
+          payment.amountKobo,
+          payment.id,
+        );
         this.eventEmitter.emit('wallet.funding_settled', {
           userId: payment.walletFundingUserId,
           amountKobo: payment.amountKobo,
@@ -271,7 +321,10 @@ export class PaymentsService {
     } else {
       await this.prisma.payment.update({
         where: { id: payment.id },
-        data: { status: PaymentStatus.FAILED as any, failureReason: 'Payment provider reported failure.' },
+        data: {
+          status: PaymentStatus.FAILED as any,
+          failureReason: 'Payment provider reported failure.',
+        },
       });
       await this.recordTransaction(payment.id, event, true, 'Gateway reported failure.');
     }
@@ -323,7 +376,12 @@ export class PaymentsService {
     return updated;
   }
 
-  async getPayment(jobType: PayableJobType, jobId: string, requestingUserId: string, requestingRole: Role) {
+  async getPayment(
+    jobType: PayableJobType,
+    jobId: string,
+    requestingUserId: string,
+    requestingRole: Role,
+  ) {
     const job = await this.getRequiredPayableJob(jobType, jobId);
     const isParty = job.payerUserId === requestingUserId || job.driverUserId === requestingUserId;
     const isAdmin = requestingRole === Role.ADMIN || requestingRole === Role.SUPER_ADMIN;
@@ -335,9 +393,13 @@ export class PaymentsService {
 
   private async creditDriverForJob(job: PayableJob, amountKobo: number): Promise<void> {
     if (job.driverUserId) {
-      const driverProfile = await this.prisma.driverProfile.findUnique({ where: { userId: job.driverUserId } });
+      const driverProfile = await this.prisma.driverProfile.findUnique({
+        where: { userId: job.driverUserId },
+      });
       if (driverProfile) {
-        const commissionKobo = Math.round((amountKobo * job.platformCommissionBasisPoints) / 10_000);
+        const commissionKobo = Math.round(
+          (amountKobo * job.platformCommissionBasisPoints) / 10_000,
+        );
         const driverEarningsKobo = Math.max(amountKobo - commissionKobo, 0);
         await this.walletService.creditForJob(
           driverProfile.id,
@@ -420,7 +482,12 @@ export class PaymentsService {
     });
   }
 
-  private async recordTransaction(paymentId: string, event: WebhookEvent, accepted: boolean, note: string) {
+  private async recordTransaction(
+    paymentId: string,
+    event: WebhookEvent,
+    accepted: boolean,
+    note: string,
+  ) {
     await this.prisma.transaction.create({
       data: {
         paymentId,

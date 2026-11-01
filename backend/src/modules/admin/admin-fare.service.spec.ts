@@ -7,11 +7,21 @@ function buildPrismaMock() {
     surgeSetting: { updateMany: jest.fn(), create: jest.fn() },
   };
   return {
-    operatingArea: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), findMany: jest.fn() },
-    vehicleCategory: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), findMany: jest.fn() },
+    operatingArea: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+    },
+    vehicleCategory: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+    },
     fareConfiguration: { findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
     surgeSetting: { findMany: jest.fn() },
-    $transaction: jest.fn((cb: (tx: typeof tx) => unknown) => cb(tx)),
+    $transaction: jest.fn((cb: (tx: any) => unknown) => cb(tx)),
     __tx: tx,
   };
 }
@@ -51,7 +61,8 @@ describe('AdminFareService', () => {
       );
 
       const createCallOrder = prisma.__tx.fareConfiguration.create.mock.invocationCallOrder[0];
-      const updateManyCallOrder = prisma.__tx.fareConfiguration.updateMany.mock.invocationCallOrder[0];
+      const updateManyCallOrder =
+        prisma.__tx.fareConfiguration.updateMany.mock.invocationCallOrder[0];
       expect(updateManyCallOrder).toBeLessThan(createCallOrder);
 
       expect(prisma.__tx.fareConfiguration.create).toHaveBeenCalledWith(

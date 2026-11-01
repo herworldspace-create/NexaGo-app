@@ -30,7 +30,10 @@ describe('RatingsService', () => {
 
   describe('submitRating', () => {
     it('rejects rating a ride that is not completed', async () => {
-      prisma.ride.findUnique.mockResolvedValue({ ...completedRide, status: RideStatus.IN_PROGRESS });
+      prisma.ride.findUnique.mockResolvedValue({
+        ...completedRide,
+        status: RideStatus.IN_PROGRESS,
+      });
       await expect(service.submitRating('ride-1', 'passenger-1', { score: 5 })).rejects.toThrow(
         BadRequestException,
       );
@@ -38,7 +41,9 @@ describe('RatingsService', () => {
 
     it('rejects a rater who was not a party to the ride', async () => {
       prisma.ride.findUnique.mockResolvedValue(completedRide);
-      await expect(service.submitRating('ride-1', 'stranger', { score: 5 })).rejects.toThrow(ForbiddenException);
+      await expect(service.submitRating('ride-1', 'stranger', { score: 5 })).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('rates the driver when the passenger submits, and credits the driver profile', async () => {
@@ -48,7 +53,13 @@ describe('RatingsService', () => {
       await service.submitRating('ride-1', 'passenger-1', { score: 4 });
 
       expect(prisma.rating.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ raterUserId: 'passenger-1', ratedUserId: 'driver-1', score: 4 }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            raterUserId: 'passenger-1',
+            ratedUserId: 'driver-1',
+            score: 4,
+          }),
+        }),
       );
       expect(prisma.driverProfile.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -78,7 +89,9 @@ describe('RatingsService', () => {
       prisma.ride.findUnique.mockResolvedValue(completedRide);
       prisma.rating.create.mockRejectedValue({ code: 'P2002' });
 
-      await expect(service.submitRating('ride-1', 'passenger-1', { score: 3 })).rejects.toThrow(BadRequestException);
+      await expect(service.submitRating('ride-1', 'passenger-1', { score: 3 })).rejects.toThrow(
+        BadRequestException,
+      );
       expect(prisma.driverProfile.updateMany).not.toHaveBeenCalled();
     });
 
@@ -87,7 +100,9 @@ describe('RatingsService', () => {
       const dbError = new Error('connection lost');
       prisma.rating.create.mockRejectedValue(dbError);
 
-      await expect(service.submitRating('ride-1', 'passenger-1', { score: 3 })).rejects.toThrow('connection lost');
+      await expect(service.submitRating('ride-1', 'passenger-1', { score: 3 })).rejects.toThrow(
+        'connection lost',
+      );
     });
 
     it('rejects rating a ride with no driver assigned', async () => {

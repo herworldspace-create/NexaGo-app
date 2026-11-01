@@ -20,19 +20,47 @@ export function rideStatusNotificationFor(
   if (audience === 'passenger') {
     switch (status) {
       case RideStatus.ACCEPTED:
-        return { type: 'ride.accepted', title: 'Driver on the way', body: 'A driver has accepted your ride request.' };
+        return {
+          type: 'ride.accepted',
+          title: 'Driver on the way',
+          body: 'A driver has accepted your ride request.',
+        };
       case RideStatus.DRIVER_ARRIVED:
-        return { type: 'ride.driver_arrived', title: 'Your driver has arrived', body: 'Your driver is waiting at the pickup point.' };
+        return {
+          type: 'ride.driver_arrived',
+          title: 'Your driver has arrived',
+          body: 'Your driver is waiting at the pickup point.',
+        };
       case RideStatus.IN_PROGRESS:
-        return { type: 'ride.started', title: 'Trip started', body: 'Your trip is now in progress.' };
+        return {
+          type: 'ride.started',
+          title: 'Trip started',
+          body: 'Your trip is now in progress.',
+        };
       case RideStatus.COMPLETED:
-        return { type: 'ride.completed', title: 'Trip completed', body: 'You have arrived. Please complete payment.' };
+        return {
+          type: 'ride.completed',
+          title: 'Trip completed',
+          body: 'You have arrived. Please complete payment.',
+        };
       case RideStatus.CANCELLED_BY_DRIVER:
-        return { type: 'ride.cancelled', title: 'Ride cancelled', body: 'Your driver cancelled this ride.' };
+        return {
+          type: 'ride.cancelled',
+          title: 'Ride cancelled',
+          body: 'Your driver cancelled this ride.',
+        };
       case RideStatus.CANCELLED_SYSTEM:
-        return { type: 'ride.cancelled', title: 'Ride cancelled', body: 'This ride was cancelled by NEXA support.' };
+        return {
+          type: 'ride.cancelled',
+          title: 'Ride cancelled',
+          body: 'This ride was cancelled by NEXA support.',
+        };
       case RideStatus.NO_DRIVERS_AVAILABLE:
-        return { type: 'ride.no_drivers', title: 'No drivers available', body: 'We could not find a nearby driver. Please try again shortly.' };
+        return {
+          type: 'ride.no_drivers',
+          title: 'No drivers available',
+          body: 'We could not find a nearby driver. Please try again shortly.',
+        };
       default:
         return null;
     }
@@ -41,17 +69,32 @@ export function rideStatusNotificationFor(
   // audience === 'driver'
   switch (status) {
     case RideStatus.CANCELLED_BY_PASSENGER:
-      return { type: 'ride.cancelled', title: 'Ride cancelled', body: 'The passenger cancelled this ride.' };
+      return {
+        type: 'ride.cancelled',
+        title: 'Ride cancelled',
+        body: 'The passenger cancelled this ride.',
+      };
     case RideStatus.CANCELLED_SYSTEM:
-      return { type: 'ride.cancelled', title: 'Ride cancelled', body: 'This ride was cancelled by NEXA support.' };
+      return {
+        type: 'ride.cancelled',
+        title: 'Ride cancelled',
+        body: 'This ride was cancelled by NEXA support.',
+      };
     case RideStatus.COMPLETED:
-      return { type: 'ride.completed', title: 'Trip completed', body: 'Trip completed. Earnings will be credited once payment settles.' };
+      return {
+        type: 'ride.completed',
+        title: 'Trip completed',
+        body: 'Trip completed. Earnings will be credited once payment settles.',
+      };
     default:
       return null;
   }
 }
 
-export function paymentPaidNotification(recipient: 'passenger' | 'driver', amountNaira: number): NotificationContent {
+export function paymentPaidNotification(
+  recipient: 'passenger' | 'driver',
+  amountNaira: number,
+): NotificationContent {
   if (recipient === 'passenger') {
     return {
       type: 'payment.paid',

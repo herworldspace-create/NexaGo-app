@@ -21,7 +21,10 @@ describe('ComplaintsService', () => {
 
   it('allows a complaint with no rideId (no party check needed)', async () => {
     prisma.complaint.create.mockResolvedValue({ id: 'c1' });
-    await service.create('user-1', { category: ComplaintCategory.OTHER, description: 'General app issue here.' });
+    await service.create('user-1', {
+      category: ComplaintCategory.OTHER,
+      description: 'General app issue here.',
+    });
     expect(prisma.ride.findUnique).not.toHaveBeenCalled();
     expect(prisma.complaint.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ againstUserId: undefined }) }),
@@ -29,21 +32,37 @@ describe('ComplaintsService', () => {
   });
 
   it('rejects a ride-tied complaint from someone who was not a party to that ride', async () => {
-    prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', passengerUserId: 'passenger-1', driverUserId: 'driver-1' });
+    prisma.ride.findUnique.mockResolvedValue({
+      id: 'ride-1',
+      passengerUserId: 'passenger-1',
+      driverUserId: 'driver-1',
+    });
     await expect(
-      service.create('stranger', { rideId: 'ride-1', category: ComplaintCategory.SAFETY, description: 'Something happened here.' }),
+      service.create('stranger', {
+        rideId: 'ride-1',
+        category: ComplaintCategory.SAFETY,
+        description: 'Something happened here.',
+      }),
     ).rejects.toThrow(ForbiddenException);
   });
 
   it('throws for a nonexistent ride', async () => {
     prisma.ride.findUnique.mockResolvedValue(null);
     await expect(
-      service.create('user-1', { rideId: 'missing', category: ComplaintCategory.OTHER, description: 'Something happened here.' }),
+      service.create('user-1', {
+        rideId: 'missing',
+        category: ComplaintCategory.OTHER,
+        description: 'Something happened here.',
+      }),
     ).rejects.toThrow(NotFoundException);
   });
 
   it('defaults againstUserId to the driver when the passenger complains', async () => {
-    prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', passengerUserId: 'passenger-1', driverUserId: 'driver-1' });
+    prisma.ride.findUnique.mockResolvedValue({
+      id: 'ride-1',
+      passengerUserId: 'passenger-1',
+      driverUserId: 'driver-1',
+    });
     prisma.complaint.create.mockResolvedValue({ id: 'c1' });
 
     await service.create('passenger-1', {
@@ -58,7 +77,11 @@ describe('ComplaintsService', () => {
   });
 
   it('defaults againstUserId to the passenger when the driver complains', async () => {
-    prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', passengerUserId: 'passenger-1', driverUserId: 'driver-1' });
+    prisma.ride.findUnique.mockResolvedValue({
+      id: 'ride-1',
+      passengerUserId: 'passenger-1',
+      driverUserId: 'driver-1',
+    });
     prisma.complaint.create.mockResolvedValue({ id: 'c1' });
 
     await service.create('driver-1', {
@@ -73,7 +96,11 @@ describe('ComplaintsService', () => {
   });
 
   it('leaves againstUserId undefined (does not guess) when the ride has no driver assigned yet', async () => {
-    prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', passengerUserId: 'passenger-1', driverUserId: null });
+    prisma.ride.findUnique.mockResolvedValue({
+      id: 'ride-1',
+      passengerUserId: 'passenger-1',
+      driverUserId: null,
+    });
     prisma.complaint.create.mockResolvedValue({ id: 'c1' });
 
     await service.create('passenger-1', {

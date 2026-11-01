@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { PayoutProvider, PayoutRequest, PayoutResult } from '../interfaces/payout-provider.interface';
+import {
+  PayoutProvider,
+  PayoutRequest,
+  PayoutResult,
+} from '../interfaces/payout-provider.interface';
 
 /**
  * NOT IMPLEMENTED. Actually moving money to a driver's bank account

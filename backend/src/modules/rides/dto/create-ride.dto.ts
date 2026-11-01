@@ -1,4 +1,12 @@
-import { IsLatitude, IsLongitude, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsLatitude,
+  IsLongitude,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class CreateRideDto {
   @IsUUID()

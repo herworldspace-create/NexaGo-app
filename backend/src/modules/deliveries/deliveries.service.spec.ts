@@ -48,9 +48,15 @@ const createDto = {
 
 function buildService(prisma: ReturnType<typeof buildPrismaMock>) {
   const fareService = {
-    estimate: jest.fn().mockResolvedValue({ currency: 'NGN', totalKobo: 80_000, platformCommissionBasisPoints: 1_000 }),
+    estimate: jest.fn().mockResolvedValue({
+      currency: 'NGN',
+      totalKobo: 80_000,
+      platformCommissionBasisPoints: 1_000,
+    }),
   } as unknown as FareService;
-  const driverVerification = { assertCanAcceptRides: jest.fn().mockResolvedValue(undefined) } as unknown as DriverVerificationService;
+  const driverVerification = {
+    assertCanAcceptRides: jest.fn().mockResolvedValue(undefined),
+  } as unknown as DriverVerificationService;
   const config = { jwt: { accessSecret: 'a'.repeat(32) } } as unknown as AppConfigService;
   const eventEmitter = { emit: jest.fn() } as any;
   const smsProvider: jest.Mocked<SmsProvider> = { send: jest.fn().mockResolvedValue(undefined) };
@@ -70,28 +76,44 @@ describe('DeliveriesService', () => {
   describe('createDelivery', () => {
     it('rejects a vehicle category that is not a DELIVERY category', async () => {
       const prisma = buildPrismaMock();
-      prisma.vehicleCategory.findUnique.mockResolvedValue({ id: 'cat-1', type: VehicleCategoryType.PASSENGER });
+      prisma.vehicleCategory.findUnique.mockResolvedValue({
+        id: 'cat-1',
+        type: VehicleCategoryType.PASSENGER,
+      });
       const { service, smsProvider } = buildService(prisma);
 
-      await expect(service.createDelivery('sender-1', createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.createDelivery('sender-1', createDto)).rejects.toThrow(
+        BadRequestException,
+      );
       expect(smsProvider.send).not.toHaveBeenCalled();
     });
 
     it('rejects a sender who already has an active delivery', async () => {
       const prisma = buildPrismaMock();
-      prisma.vehicleCategory.findUnique.mockResolvedValue({ id: 'cat-1', type: VehicleCategoryType.DELIVERY });
+      prisma.vehicleCategory.findUnique.mockResolvedValue({
+        id: 'cat-1',
+        type: VehicleCategoryType.DELIVERY,
+      });
       prisma.delivery.findFirst.mockResolvedValue({ id: 'existing' });
       const { service } = buildService(prisma);
 
-      await expect(service.createDelivery('sender-1', createDto)).rejects.toThrow(BadRequestException);
+      await expect(service.createDelivery('sender-1', createDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('sends the confirmation PIN to the recipient via SMS, not the in-app notification system', async () => {
       const prisma = buildPrismaMock();
-      prisma.vehicleCategory.findUnique.mockResolvedValue({ id: 'cat-1', type: VehicleCategoryType.DELIVERY });
+      prisma.vehicleCategory.findUnique.mockResolvedValue({
+        id: 'cat-1',
+        type: VehicleCategoryType.DELIVERY,
+      });
       prisma.delivery.findFirst.mockResolvedValue(null);
       prisma.delivery.create.mockResolvedValue({ id: 'delivery-1' });
-      prisma.delivery.findUnique.mockResolvedValue({ senderUserId: 'sender-1', driverUserId: null });
+      prisma.delivery.findUnique.mockResolvedValue({
+        senderUserId: 'sender-1',
+        driverUserId: null,
+      });
 
       const { service, smsProvider } = buildService(prisma);
       await service.createDelivery('sender-1', createDto);
@@ -104,10 +126,16 @@ describe('DeliveriesService', () => {
 
     it('never stores the raw PIN — only a hash', async () => {
       const prisma = buildPrismaMock();
-      prisma.vehicleCategory.findUnique.mockResolvedValue({ id: 'cat-1', type: VehicleCategoryType.DELIVERY });
+      prisma.vehicleCategory.findUnique.mockResolvedValue({
+        id: 'cat-1',
+        type: VehicleCategoryType.DELIVERY,
+      });
       prisma.delivery.findFirst.mockResolvedValue(null);
       prisma.delivery.create.mockResolvedValue({ id: 'delivery-1' });
-      prisma.delivery.findUnique.mockResolvedValue({ senderUserId: 'sender-1', driverUserId: null });
+      prisma.delivery.findUnique.mockResolvedValue({
+        senderUserId: 'sender-1',
+        driverUserId: null,
+      });
 
       const { service, smsProvider } = buildService(prisma);
       await service.createDelivery('sender-1', createDto);
@@ -132,7 +160,11 @@ describe('DeliveriesService', () => {
       const prisma = buildPrismaMock();
       prisma.driverProfile.findUnique.mockResolvedValue(driverProfile);
       prisma.delivery.findFirst.mockResolvedValue(null);
-      prisma.delivery.findUnique.mockResolvedValue({ id: 'delivery-1', vehicleCategoryId: 'cat-1', status: DeliveryStatus.REQUESTED });
+      prisma.delivery.findUnique.mockResolvedValue({
+        id: 'delivery-1',
+        vehicleCategoryId: 'cat-1',
+        status: DeliveryStatus.REQUESTED,
+      });
       prisma.delivery.updateMany.mockResolvedValue({ count: 1 });
 
       const { service } = buildService(prisma);
@@ -148,11 +180,17 @@ describe('DeliveriesService', () => {
       const prisma = buildPrismaMock();
       prisma.driverProfile.findUnique.mockResolvedValue(driverProfile);
       prisma.delivery.findFirst.mockResolvedValue(null);
-      prisma.delivery.findUnique.mockResolvedValue({ id: 'delivery-1', vehicleCategoryId: 'cat-1', status: DeliveryStatus.REQUESTED });
+      prisma.delivery.findUnique.mockResolvedValue({
+        id: 'delivery-1',
+        vehicleCategoryId: 'cat-1',
+        status: DeliveryStatus.REQUESTED,
+      });
       prisma.delivery.updateMany.mockResolvedValue({ count: 0 });
 
       const { service } = buildService(prisma);
-      await expect(service.acceptDelivery('delivery-1', 'driver-1')).rejects.toThrow(ConflictException);
+      await expect(service.acceptDelivery('delivery-1', 'driver-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -168,26 +206,36 @@ describe('DeliveriesService', () => {
     it('rejects an incorrect PIN and does not complete the delivery', async () => {
       const prisma = buildPrismaMock();
       prisma.delivery.findUnique.mockResolvedValue(ownedDelivery);
-      prisma.parcel.findUnique.mockResolvedValue({ confirmationPinHash: hmacHash('1234', 'a'.repeat(32)) });
+      prisma.parcel.findUnique.mockResolvedValue({
+        confirmationPinHash: hmacHash('1234', 'a'.repeat(32)),
+      });
 
       const { service } = buildService(prisma);
-      await expect(service.completeDelivery('delivery-1', 'driver-1', '9999')).rejects.toThrow(BadRequestException);
+      await expect(service.completeDelivery('delivery-1', 'driver-1', '9999')).rejects.toThrow(
+        BadRequestException,
+      );
       expect(prisma.delivery.update).not.toHaveBeenCalled();
     });
 
     it('completes the delivery on a correct PIN (wallet crediting now happens via PaymentsService, not here)', async () => {
       const prisma = buildPrismaMock();
       prisma.delivery.findUnique.mockResolvedValue(ownedDelivery);
-      prisma.parcel.findUnique.mockResolvedValue({ confirmationPinHash: hmacHash('4321', 'a'.repeat(32)) });
+      prisma.parcel.findUnique.mockResolvedValue({
+        confirmationPinHash: hmacHash('4321', 'a'.repeat(32)),
+      });
 
       const { service } = buildService(prisma);
       await service.completeDelivery('delivery-1', 'driver-1', '4321');
 
       expect(prisma.delivery.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: DeliveryStatus.DELIVERED }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: DeliveryStatus.DELIVERED }),
+        }),
       );
       expect(prisma.parcel.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ pinVerifiedAt: expect.any(Date) }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ pinVerifiedAt: expect.any(Date) }),
+        }),
       );
     });
 
@@ -196,7 +244,9 @@ describe('DeliveriesService', () => {
       prisma.delivery.findUnique.mockResolvedValue(ownedDelivery);
 
       const { service } = buildService(prisma);
-      await expect(service.completeDelivery('delivery-1', 'someone-else', '4321')).rejects.toThrow(ForbiddenException);
+      await expect(service.completeDelivery('delivery-1', 'someone-else', '4321')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });

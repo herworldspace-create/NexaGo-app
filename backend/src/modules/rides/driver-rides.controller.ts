@@ -42,7 +42,11 @@ export class DriverRidesController {
   }
 
   @Post(':id/cancel')
-  async cancel(@Param('id') id: string, @Body() dto: CancelRideDto, @CurrentUser() user: AuthenticatedUser) {
+  async cancel(
+    @Param('id') id: string,
+    @Body() dto: CancelRideDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.ridesService.cancelByDriver(id, user.userId, dto.reason);
   }
 }

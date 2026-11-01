@@ -1,11 +1,25 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../config/prisma.service';
 import { FareService } from '../fare/fare.service';
 import { DriverVerificationService } from '../driver-verification/driver-verification.service';
 import { Role } from '../../common/enums/role.enum';
-import { PassengerVerificationStatus, DriverVerificationStatus } from '../../common/enums/verification-status.enum';
-import { ACTIVE_RIDE_STATUSES, TERMINAL_RIDE_STATUSES, RideCancelledBy, RideStatus } from '../../common/enums/ride-status.enum';
+import {
+  PassengerVerificationStatus,
+  DriverVerificationStatus,
+} from '../../common/enums/verification-status.enum';
+import {
+  ACTIVE_RIDE_STATUSES,
+  TERMINAL_RIDE_STATUSES,
+  RideCancelledBy,
+  RideStatus,
+} from '../../common/enums/ride-status.enum';
 import { assertValidRideTransition } from './ride-status.state-machine';
 import { boundingBox, haversineDistanceKm } from './geo.util';
 import { MAX_AVAILABLE_RIDES_RETURNED, MAX_MATCHING_RADIUS_KM } from './matching.const';
@@ -31,7 +45,9 @@ export class RidesService {
       !passengerProfile ||
       passengerProfile.verificationStatus !== (PassengerVerificationStatus.IDENTITY_VERIFIED as any)
     ) {
-      throw new BadRequestException('Identity verification must be completed before requesting a ride.');
+      throw new BadRequestException(
+        'Identity verification must be completed before requesting a ride.',
+      );
     }
 
     const existingActive = await this.prisma.ride.findFirst({
@@ -110,7 +126,9 @@ export class RidesService {
       throw new ForbiddenException('This ride does not belong to you.');
     }
     if (TERMINAL_RIDE_STATUSES.has(ride.status as unknown as RideStatus)) {
-      throw new BadRequestException('This ride has already ended and its destination can no longer be changed.');
+      throw new BadRequestException(
+        'This ride has already ended and its destination can no longer be changed.',
+      );
     }
 
     const newFareEstimate = await this.fareService.estimate({
@@ -161,7 +179,10 @@ export class RidesService {
 
   async getFareRevisions(rideId: string, requestingUserId: string, requestingRole: Role) {
     await this.getRide(rideId, requestingUserId, requestingRole); // reuses the same authorization rule
-    return this.prisma.rideFareRevision.findMany({ where: { rideId }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.rideFareRevision.findMany({
+      where: { rideId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   // --- Driver side -----------------------------------------------------------
@@ -198,7 +219,10 @@ export class RidesService {
       return [];
     }
 
-    const driverPoint = { latitude: driverProfile.location.latitude, longitude: driverProfile.location.longitude };
+    const driverPoint = {
+      latitude: driverProfile.location.latitude,
+      longitude: driverProfile.location.longitude,
+    };
     const box = boundingBox(driverPoint, MAX_MATCHING_RADIUS_KM);
 
     const candidates = await this.prisma.ride.findMany({
@@ -214,7 +238,10 @@ export class RidesService {
     return candidates
       .map((ride) => ({
         ...ride,
-        distanceKm: haversineDistanceKm(driverPoint, { latitude: ride.pickupLat, longitude: ride.pickupLng }),
+        distanceKm: haversineDistanceKm(driverPoint, {
+          latitude: ride.pickupLat,
+          longitude: ride.pickupLng,
+        }),
       }))
       .filter((ride) => ride.distanceKm <= MAX_MATCHING_RADIUS_KM)
       .sort((a, b) => a.distanceKm - b.distanceKm)
@@ -254,7 +281,9 @@ export class RidesService {
       (v) => v.isActive && v.vehicleCategoryId === ride.vehicleCategoryId,
     );
     if (!matchingVehicle) {
-      throw new BadRequestException('You do not have an active vehicle registered for this ride category.');
+      throw new BadRequestException(
+        'You do not have an active vehicle registered for this ride category.',
+      );
     }
 
     const result = await this.prisma.ride.updateMany({
@@ -268,7 +297,9 @@ export class RidesService {
     });
 
     if (result.count === 0) {
-      throw new ConflictException('This ride is no longer available — another driver may have accepted it.');
+      throw new ConflictException(
+        'This ride is no longer available — another driver may have accepted it.',
+      );
     }
 
     await this.recordHistory(rideId, RideStatus.ACCEPTED, driverUserId);
@@ -366,7 +397,9 @@ export class RidesService {
       where: { status: { in: Array.from(ACTIVE_RIDE_STATUSES) as any } },
       select: { driverUserId: true },
     });
-    const busyDriverUserIds = new Set(busyRides.map((r) => r.driverUserId).filter((id): id is string => Boolean(id)));
+    const busyDriverUserIds = new Set(
+      busyRides.map((r) => r.driverUserId).filter((id): id is string => Boolean(id)),
+    );
 
     const eligible: string[] = [];
     for (const location of candidateLocations) {
@@ -395,7 +428,8 @@ export class RidesService {
 
   async getRide(rideId: string, requestingUserId: string, requestingRole: Role) {
     const ride = await this.getRequiredRide(rideId);
-    const isParty = ride.passengerUserId === requestingUserId || ride.driverUserId === requestingUserId;
+    const isParty =
+      ride.passengerUserId === requestingUserId || ride.driverUserId === requestingUserId;
     const isAdmin = requestingRole === Role.ADMIN || requestingRole === Role.SUPER_ADMIN;
     if (!isParty && !isAdmin) {
       throw new ForbiddenException('You do not have access to this ride.');
@@ -403,7 +437,12 @@ export class RidesService {
     return ride;
   }
 
-  private async cancel(ride: { id: string; status: string }, by: RideCancelledBy, actorUserId: string, reason?: string) {
+  private async cancel(
+    ride: { id: string; status: string },
+    by: RideCancelledBy,
+    actorUserId: string,
+    reason?: string,
+  ) {
     const targetStatusByActor: Record<RideCancelledBy, RideStatus> = {
       [RideCancelledBy.PASSENGER]: RideStatus.CANCELLED_BY_PASSENGER,
       [RideCancelledBy.DRIVER]: RideStatus.CANCELLED_BY_DRIVER,
@@ -441,7 +480,12 @@ export class RidesService {
     return ride;
   }
 
-  private async recordHistory(rideId: string, status: RideStatus, changedByUserId?: string, reason?: string) {
+  private async recordHistory(
+    rideId: string,
+    status: RideStatus,
+    changedByUserId?: string,
+    reason?: string,
+  ) {
     await this.prisma.rideStatusHistory.create({
       data: { rideId, status: status as any, changedByUserId, reason },
     });

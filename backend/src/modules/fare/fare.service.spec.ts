@@ -32,7 +32,12 @@ describe('FareService', () => {
     prisma.fareConfiguration.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.estimate({ operatingAreaId: 'area-1', vehicleCategoryId: 'cat-1', distanceKm: 5, durationMinutes: 5 }),
+      service.estimate({
+        operatingAreaId: 'area-1',
+        vehicleCategoryId: 'cat-1',
+        distanceKm: 5,
+        durationMinutes: 5,
+      }),
     ).rejects.toThrow(NotFoundException);
   });
 

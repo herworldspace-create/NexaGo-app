@@ -23,10 +23,18 @@ export class PaymentNotificationsListener {
     const idKey = event.jobType === 'ride' ? 'rideId' : 'deliveryId';
     const data = { [idKey]: event.jobId };
 
-    await this.notifications.notify(event.payerUserId, paymentPaidNotification('passenger', amountNaira), data);
+    await this.notifications.notify(
+      event.payerUserId,
+      paymentPaidNotification('passenger', amountNaira),
+      data,
+    );
 
     if (event.driverUserId) {
-      await this.notifications.notify(event.driverUserId, paymentPaidNotification('driver', amountNaira), data);
+      await this.notifications.notify(
+        event.driverUserId,
+        paymentPaidNotification('driver', amountNaira),
+        data,
+      );
     }
   }
 }

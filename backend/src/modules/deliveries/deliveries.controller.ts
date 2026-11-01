@@ -26,7 +26,11 @@ export class DeliveriesController {
   }
 
   @Post(':id/cancel')
-  async cancel(@Param('id') id: string, @Body() dto: CancelDeliveryDto, @CurrentUser() user: AuthenticatedUser) {
+  async cancel(
+    @Param('id') id: string,
+    @Body() dto: CancelDeliveryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.deliveriesService.cancelBySender(id, user.userId, dto.reason);
   }
 }

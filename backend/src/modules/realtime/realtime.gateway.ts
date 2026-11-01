@@ -114,7 +114,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   @SubscribeMessage('ride:unsubscribe')
-  handleRideUnsubscribe(@ConnectedSocket() client: Socket, @MessageBody() body: { rideId?: string }) {
+  handleRideUnsubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { rideId?: string },
+  ) {
     if (body?.rideId) {
       client.leave(rideRoom(body.rideId));
     }
@@ -133,7 +136,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   @SubscribeMessage('delivery:unsubscribe')
-  handleDeliveryUnsubscribe(@ConnectedSocket() client: Socket, @MessageBody() body: { deliveryId?: string }) {
+  handleDeliveryUnsubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { deliveryId?: string },
+  ) {
     if (body?.deliveryId) {
       client.leave(deliveryRoom(body.deliveryId));
     }
@@ -158,17 +164,26 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const dto = await validateWsPayload(DriverLocationPingDto, body);
 
     const activeRide = await this.ridesService.getCurrentForDriver(user.userId);
-    const activeDelivery = activeRide ? null : await this.deliveriesService.getCurrentForDriver(user.userId);
+    const activeDelivery = activeRide
+      ? null
+      : await this.deliveriesService.getCurrentForDriver(user.userId);
 
-    const hasActiveRide = activeRide && ACTIVE_RIDE_STATUSES.has(activeRide.status as unknown as RideStatus);
+    const hasActiveRide =
+      activeRide && ACTIVE_RIDE_STATUSES.has(activeRide.status as unknown as RideStatus);
     const hasActiveDelivery =
-      activeDelivery && ACTIVE_DELIVERY_STATUSES.has(activeDelivery.status as unknown as DeliveryStatus);
+      activeDelivery &&
+      ACTIVE_DELIVERY_STATUSES.has(activeDelivery.status as unknown as DeliveryStatus);
 
     if (!hasActiveRide && !hasActiveDelivery) {
       throw new WsException('You do not have an active ride or delivery.');
     }
 
-    await this.driverLocationService.updatePositionOnly(user.userId, dto.latitude, dto.longitude, dto.heading);
+    await this.driverLocationService.updatePositionOnly(
+      user.userId,
+      dto.latitude,
+      dto.longitude,
+      dto.heading,
+    );
 
     const payload = {
       latitude: dto.latitude,
@@ -178,7 +193,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     };
 
     if (hasActiveRide) {
-      this.server.to(rideRoom(activeRide!.id)).emit('ride:driver_location', { rideId: activeRide!.id, ...payload });
+      this.server
+        .to(rideRoom(activeRide!.id))
+        .emit('ride:driver_location', { rideId: activeRide!.id, ...payload });
     } else if (hasActiveDelivery) {
       this.server
         .to(deliveryRoom(activeDelivery!.id))

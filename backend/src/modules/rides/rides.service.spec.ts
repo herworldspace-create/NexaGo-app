@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { RidesService } from './rides.service';
 import { PrismaService } from '../../config/prisma.service';
 import { FareService } from '../fare/fare.service';
@@ -89,7 +94,9 @@ describe('RidesService', () => {
         verificationStatus: PassengerVerificationStatus.PHONE_VERIFIED,
       });
 
-      await expect(service.createRide('passenger-1', createRideDto)).rejects.toThrow(BadRequestException);
+      await expect(service.createRide('passenger-1', createRideDto)).rejects.toThrow(
+        BadRequestException,
+      );
       expect(fareService.estimate).not.toHaveBeenCalled();
     });
 
@@ -99,7 +106,9 @@ describe('RidesService', () => {
       });
       prisma.ride.findFirst.mockResolvedValue({ id: 'existing-ride' });
 
-      await expect(service.createRide('passenger-1', createRideDto)).rejects.toThrow(BadRequestException);
+      await expect(service.createRide('passenger-1', createRideDto)).rejects.toThrow(
+        BadRequestException,
+      );
       expect(fareService.estimate).not.toHaveBeenCalled();
     });
 
@@ -109,7 +118,10 @@ describe('RidesService', () => {
       });
       prisma.ride.findFirst.mockResolvedValue(null);
       prisma.ride.create.mockResolvedValue({ id: 'ride-1' });
-      prisma.ride.findUnique.mockResolvedValue({ passengerUserId: 'passenger-1', driverUserId: null });
+      prisma.ride.findUnique.mockResolvedValue({
+        passengerUserId: 'passenger-1',
+        driverUserId: null,
+      });
 
       const result = await service.createRide('passenger-1', createRideDto);
 
@@ -126,11 +138,17 @@ describe('RidesService', () => {
         }),
       );
       expect(prisma.rideStatusHistory.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: RideStatus.REQUESTED }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: RideStatus.REQUESTED }),
+        }),
       );
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'ride.status_changed',
-        expect.objectContaining({ rideId: 'ride-1', status: RideStatus.REQUESTED, passengerUserId: 'passenger-1' }),
+        expect.objectContaining({
+          rideId: 'ride-1',
+          status: RideStatus.REQUESTED,
+          passengerUserId: 'passenger-1',
+        }),
       );
       expect(result).toEqual({ id: 'ride-1' });
     });
@@ -145,7 +163,11 @@ describe('RidesService', () => {
     it('succeeds when the conditional update affects exactly one row', async () => {
       prisma.driverProfile.findUnique.mockResolvedValue(driverProfile);
       prisma.ride.findFirst.mockResolvedValue(null); // not already busy
-      prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', vehicleCategoryId: 'cat-1', status: RideStatus.REQUESTED });
+      prisma.ride.findUnique.mockResolvedValue({
+        id: 'ride-1',
+        vehicleCategoryId: 'cat-1',
+        status: RideStatus.REQUESTED,
+      });
       prisma.ride.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.acceptRide('ride-1', 'driver-1');
@@ -163,14 +185,21 @@ describe('RidesService', () => {
     it('throws ConflictException when another driver already accepted (0 rows affected)', async () => {
       prisma.driverProfile.findUnique.mockResolvedValue(driverProfile);
       prisma.ride.findFirst.mockResolvedValue(null);
-      prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', vehicleCategoryId: 'cat-1', status: RideStatus.REQUESTED });
+      prisma.ride.findUnique.mockResolvedValue({
+        id: 'ride-1',
+        vehicleCategoryId: 'cat-1',
+        status: RideStatus.REQUESTED,
+      });
       prisma.ride.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(service.acceptRide('ride-1', 'driver-1')).rejects.toThrow(ConflictException);
     });
 
     it('rejects if the driver is not online', async () => {
-      prisma.driverProfile.findUnique.mockResolvedValue({ location: { isOnline: false }, vehicles: [] });
+      prisma.driverProfile.findUnique.mockResolvedValue({
+        location: { isOnline: false },
+        vehicles: [],
+      });
 
       await expect(service.acceptRide('ride-1', 'driver-1')).rejects.toThrow(BadRequestException);
       expect(prisma.ride.updateMany).not.toHaveBeenCalled();
@@ -190,7 +219,11 @@ describe('RidesService', () => {
         vehicles: [{ id: 'v1', isActive: true, vehicleCategoryId: 'different-category' }],
       });
       prisma.ride.findFirst.mockResolvedValue(null);
-      prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', vehicleCategoryId: 'cat-1', status: RideStatus.REQUESTED });
+      prisma.ride.findUnique.mockResolvedValue({
+        id: 'ride-1',
+        vehicleCategoryId: 'cat-1',
+        status: RideStatus.REQUESTED,
+      });
 
       await expect(service.acceptRide('ride-1', 'driver-1')).rejects.toThrow(BadRequestException);
       expect(prisma.ride.updateMany).not.toHaveBeenCalled();
@@ -199,14 +232,19 @@ describe('RidesService', () => {
 
   describe('listAvailableForDriver — eligibility exclusions', () => {
     it('rejects (via driver verification) an ineligible driver before any ride lookup', async () => {
-      driverVerification.assertCanAcceptRides.mockRejectedValue(new BadRequestException('not eligible'));
+      driverVerification.assertCanAcceptRides.mockRejectedValue(
+        new BadRequestException('not eligible'),
+      );
 
       await expect(service.listAvailableForDriver('driver-1')).rejects.toThrow(BadRequestException);
       expect(prisma.ride.findMany).not.toHaveBeenCalled();
     });
 
     it('rejects an offline driver', async () => {
-      prisma.driverProfile.findUnique.mockResolvedValue({ location: { isOnline: false }, vehicles: [] });
+      prisma.driverProfile.findUnique.mockResolvedValue({
+        location: { isOnline: false },
+        vehicles: [],
+      });
 
       await expect(service.listAvailableForDriver('driver-1')).rejects.toThrow(BadRequestException);
     });
@@ -268,14 +306,22 @@ describe('RidesService', () => {
 
   describe('cancelByPassenger', () => {
     it('rejects cancelling a ride that belongs to someone else', async () => {
-      prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', passengerUserId: 'someone-else', status: RideStatus.REQUESTED });
+      prisma.ride.findUnique.mockResolvedValue({
+        id: 'ride-1',
+        passengerUserId: 'someone-else',
+        status: RideStatus.REQUESTED,
+      });
 
-      await expect(service.cancelByPassenger('ride-1', 'passenger-1')).rejects.toThrow(ForbiddenException);
+      await expect(service.cancelByPassenger('ride-1', 'passenger-1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('rejects cancelling a ride that no longer exists', async () => {
       prisma.ride.findUnique.mockResolvedValue(null);
-      await expect(service.cancelByPassenger('missing', 'passenger-1')).rejects.toThrow(NotFoundException);
+      await expect(service.cancelByPassenger('missing', 'passenger-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -428,26 +474,46 @@ describe('RidesService', () => {
           data: expect.objectContaining({ destinationLat: 12.0, destinationLng: 13.3 }),
         }),
       );
-      expect(eventEmitter.emit).toHaveBeenCalledWith('ride.fare_updated', expect.objectContaining({ rideId: 'ride-1' }));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'ride.fare_updated',
+        expect.objectContaining({ rideId: 'ride-1' }),
+      );
     });
   });
 
   describe('cancelBySystem (admin/support cancellation)', () => {
     it('allows cancelling a ride that is IN_PROGRESS (unlike passenger/driver cancellation)', async () => {
-      prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', status: RideStatus.IN_PROGRESS, passengerUserId: 'p1', driverUserId: 'd1' });
+      prisma.ride.findUnique.mockResolvedValue({
+        id: 'ride-1',
+        status: RideStatus.IN_PROGRESS,
+        passengerUserId: 'p1',
+        driverUserId: 'd1',
+      });
 
-      const result = await service.cancelBySystem('ride-1', 'admin-1', 'Emergency dispatch override');
+      const result = await service.cancelBySystem(
+        'ride-1',
+        'admin-1',
+        'Emergency dispatch override',
+      );
 
       expect(prisma.ride.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ status: RideStatus.CANCELLED_SYSTEM, cancelledBy: 'SYSTEM' }),
+          data: expect.objectContaining({
+            status: RideStatus.CANCELLED_SYSTEM,
+            cancelledBy: 'SYSTEM',
+          }),
         }),
       );
       expect(result).toBeDefined();
     });
 
     it('rejects cancelling a ride already in a terminal state', async () => {
-      prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', status: RideStatus.COMPLETED, passengerUserId: 'p1', driverUserId: 'd1' });
+      prisma.ride.findUnique.mockResolvedValue({
+        id: 'ride-1',
+        status: RideStatus.COMPLETED,
+        passengerUserId: 'p1',
+        driverUserId: 'd1',
+      });
 
       await expect(service.cancelBySystem('ride-1', 'admin-1')).rejects.toThrow();
       expect(prisma.ride.update).not.toHaveBeenCalled();
@@ -456,13 +522,21 @@ describe('RidesService', () => {
 
   describe('getRide — authorization', () => {
     it('allows the passenger who owns the ride', async () => {
-      prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', passengerUserId: 'passenger-1', driverUserId: null });
+      prisma.ride.findUnique.mockResolvedValue({
+        id: 'ride-1',
+        passengerUserId: 'passenger-1',
+        driverUserId: null,
+      });
       const result = await service.getRide('ride-1', 'passenger-1', 'PASSENGER' as any);
       expect(result).toBeDefined();
     });
 
     it('rejects an unrelated passenger', async () => {
-      prisma.ride.findUnique.mockResolvedValue({ id: 'ride-1', passengerUserId: 'someone-else', driverUserId: null });
+      prisma.ride.findUnique.mockResolvedValue({
+        id: 'ride-1',
+        passengerUserId: 'someone-else',
+        driverUserId: null,
+      });
       await expect(service.getRide('ride-1', 'passenger-1', 'PASSENGER' as any)).rejects.toThrow(
         ForbiddenException,
       );

@@ -1,4 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Headers, Param, Post, Req, RawBodyRequest } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Headers,
+  Param,
+  Post,
+  Req,
+  RawBodyRequest,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -30,7 +41,11 @@ export class PaymentsController {
 
   @Roles(Role.PASSENGER)
   @Post('rides/:id/payment')
-  async initiateForRide(@Param('id') rideId: string, @Body() dto: InitiatePaymentDto, @CurrentUser() user: AuthenticatedUser) {
+  async initiateForRide(
+    @Param('id') rideId: string,
+    @Body() dto: InitiatePaymentDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.paymentsService.initiatePayment('ride', rideId, user.userId, dto);
   }
 
@@ -63,7 +78,10 @@ export class PaymentsController {
 
   @Roles(Role.DRIVER)
   @Post('drivers/deliveries/:id/payment/confirm-cash')
-  async confirmCashForDelivery(@Param('id') deliveryId: string, @CurrentUser() user: AuthenticatedUser) {
+  async confirmCashForDelivery(
+    @Param('id') deliveryId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.paymentsService.confirmCashPayment('delivery', deliveryId, user.userId);
   }
 
@@ -81,7 +99,10 @@ export class PaymentsController {
   @Public()
   @Post('payments/webhook/paystack')
   @HttpCode(HttpStatus.OK)
-  async paystackWebhook(@Req() req: RawBodyRequest<Request>, @Headers('x-paystack-signature') signature?: string) {
+  async paystackWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('x-paystack-signature') signature?: string,
+  ) {
     const rawBody = req.rawBody?.toString('utf8') ?? '';
     await this.paymentsService.handleWebhook(rawBody, signature);
     return { received: true };

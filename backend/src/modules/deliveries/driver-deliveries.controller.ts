@@ -39,12 +39,20 @@ export class DriverDeliveriesController {
 
   /** Requires the recipient's 4-digit confirmation PIN — see DeliveriesService.completeDelivery. */
   @Post(':id/complete')
-  async complete(@Param('id') id: string, @Body() dto: ConfirmDeliveryDto, @CurrentUser() user: AuthenticatedUser) {
+  async complete(
+    @Param('id') id: string,
+    @Body() dto: ConfirmDeliveryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.deliveriesService.completeDelivery(id, user.userId, dto.pin);
   }
 
   @Post(':id/cancel')
-  async cancel(@Param('id') id: string, @Body() dto: CancelDeliveryDto, @CurrentUser() user: AuthenticatedUser) {
+  async cancel(
+    @Param('id') id: string,
+    @Body() dto: CancelDeliveryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.deliveriesService.cancelByDriver(id, user.userId, dto.reason);
   }
 }

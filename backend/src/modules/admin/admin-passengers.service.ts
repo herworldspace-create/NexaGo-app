@@ -54,7 +54,10 @@ export class AdminPassengersService {
 
   async suspend(passengerProfileId: string) {
     const profile = await this.getDetail(passengerProfileId);
-    await this.prisma.user.update({ where: { id: profile.userId }, data: { status: 'SUSPENDED' as any } });
+    await this.prisma.user.update({
+      where: { id: profile.userId },
+      data: { status: 'SUSPENDED' as any },
+    });
     return this.prisma.passengerProfile.update({
       where: { id: passengerProfileId },
       data: { verificationStatus: 'SUSPENDED' as any },
@@ -63,7 +66,10 @@ export class AdminPassengersService {
 
   async activate(passengerProfileId: string) {
     const profile = await this.getDetail(passengerProfileId);
-    await this.prisma.user.update({ where: { id: profile.userId }, data: { status: 'ACTIVE' as any } });
+    await this.prisma.user.update({
+      where: { id: profile.userId },
+      data: { status: 'ACTIVE' as any },
+    });
     // Restore to IDENTITY_VERIFIED if they had completed identity
     // verification before suspension, otherwise fall back to PHONE_VERIFIED.
     const verification = await this.prisma.identityVerification.findFirst({

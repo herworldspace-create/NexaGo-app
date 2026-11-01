@@ -1,4 +1,13 @@
-import { Body, Controller, HttpCode, HttpStatus, Ip, Post, Headers, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Ip,
+  Post,
+  Headers,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -30,11 +39,16 @@ export class AuthController {
     @Headers('user-agent') userAgent: string,
     @Headers('x-device-id') deviceId: string,
   ) {
-    const result = await this.authService.verifyOtpAndAuthenticate(dto.phone, dto.code, dto.intendedRole, {
-      ipAddress: ip,
-      userAgent,
-      deviceId,
-    });
+    const result = await this.authService.verifyOtpAndAuthenticate(
+      dto.phone,
+      dto.code,
+      dto.intendedRole,
+      {
+        ipAddress: ip,
+        userAgent,
+        deviceId,
+      },
+    );
 
     return {
       userId: result.userId,

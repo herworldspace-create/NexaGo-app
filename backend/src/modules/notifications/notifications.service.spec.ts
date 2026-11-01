@@ -6,8 +6,19 @@ import { NotificationStatus, DevicePlatform } from '../../common/enums/notificat
 
 function buildPrismaMock() {
   return {
-    deviceToken: { upsert: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
-    notification: { create: jest.fn(), update: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
+    deviceToken: {
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+    },
+    notification: {
+      create: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      count: jest.fn(),
+    },
   };
 }
 
@@ -51,12 +62,22 @@ describe('NotificationsService', () => {
     });
 
     it('rejects unregistering a token that belongs to someone else', async () => {
-      prisma.deviceToken.findUnique.mockResolvedValue({ id: 'dt-1', userId: 'someone-else', token: 'token-x' });
-      await expect(service.unregisterDeviceToken('user-1', 'token-x')).rejects.toThrow(ForbiddenException);
+      prisma.deviceToken.findUnique.mockResolvedValue({
+        id: 'dt-1',
+        userId: 'someone-else',
+        token: 'token-x',
+      });
+      await expect(service.unregisterDeviceToken('user-1', 'token-x')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('deactivates a token the user owns', async () => {
-      prisma.deviceToken.findUnique.mockResolvedValue({ id: 'dt-1', userId: 'user-1', token: 'token-x' });
+      prisma.deviceToken.findUnique.mockResolvedValue({
+        id: 'dt-1',
+        userId: 'user-1',
+        token: 'token-x',
+      });
       await service.unregisterDeviceToken('user-1', 'token-x');
       expect(prisma.deviceToken.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { isActive: false } }),
@@ -73,7 +94,9 @@ describe('NotificationsService', () => {
 
       expect(provider.send).not.toHaveBeenCalled();
       expect(prisma.notification.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: NotificationStatus.SENT }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: NotificationStatus.SENT }),
+        }),
       );
     });
 
@@ -83,12 +106,16 @@ describe('NotificationsService', () => {
         { id: 'dt-1', token: 'tok-1' },
         { id: 'dt-2', token: 'tok-2' },
       ]);
-      provider.send.mockResolvedValueOnce({ status: 'sent' }).mockResolvedValueOnce({ status: 'failed', reason: 'x' });
+      provider.send
+        .mockResolvedValueOnce({ status: 'sent' })
+        .mockResolvedValueOnce({ status: 'failed', reason: 'x' });
 
       await service.notify('user-1', content);
 
       expect(prisma.notification.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: NotificationStatus.SENT }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: NotificationStatus.SENT }),
+        }),
       );
     });
 
@@ -100,7 +127,9 @@ describe('NotificationsService', () => {
       await service.notify('user-1', content);
 
       expect(prisma.notification.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: NotificationStatus.FAILED }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: NotificationStatus.FAILED }),
+        }),
       );
     });
 
@@ -119,7 +148,11 @@ describe('NotificationsService', () => {
 
   describe('markRead', () => {
     it('rejects marking a notification that belongs to someone else', async () => {
-      prisma.notification.findUnique.mockResolvedValue({ id: 'n1', userId: 'someone-else', readAt: null });
+      prisma.notification.findUnique.mockResolvedValue({
+        id: 'n1',
+        userId: 'someone-else',
+        readAt: null,
+      });
       await expect(service.markRead('user-1', 'n1')).rejects.toThrow(ForbiddenException);
     });
 

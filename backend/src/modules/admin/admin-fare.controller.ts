@@ -64,7 +64,10 @@ export class AdminFareController {
 
   @Post('configurations')
   @AuditLog({ action: 'FARE_CONFIGURATION_CREATED', targetType: 'FareConfiguration' })
-  async createConfiguration(@Body() dto: CreateFareConfigurationDto, @CurrentUser() admin: AuthenticatedUser) {
+  async createConfiguration(
+    @Body() dto: CreateFareConfigurationDto,
+    @CurrentUser() admin: AuthenticatedUser,
+  ) {
     return this.service.createFareConfiguration(dto, admin.userId);
   }
 

@@ -10,12 +10,18 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post('device-tokens')
-  async registerDeviceToken(@Body() dto: RegisterDeviceTokenDto, @CurrentUser() user: AuthenticatedUser) {
+  async registerDeviceToken(
+    @Body() dto: RegisterDeviceTokenDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.notificationsService.registerDeviceToken(user.userId, dto.token, dto.platform);
   }
 
   @Delete('device-tokens')
-  async unregisterDeviceToken(@Body() dto: UnregisterDeviceTokenDto, @CurrentUser() user: AuthenticatedUser) {
+  async unregisterDeviceToken(
+    @Body() dto: UnregisterDeviceTokenDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     await this.notificationsService.unregisterDeviceToken(user.userId, dto.token);
     return { unregistered: true };
   }

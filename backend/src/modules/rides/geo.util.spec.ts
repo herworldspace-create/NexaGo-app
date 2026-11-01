@@ -17,7 +17,7 @@ describe('haversineDistanceKm', () => {
 
   it('is symmetric', () => {
     const a = { latitude: 11.85, longitude: 13.16 };
-    const b = { latitude: 11.90, longitude: 13.20 };
+    const b = { latitude: 11.9, longitude: 13.2 };
     expect(haversineDistanceKm(a, b)).toBeCloseTo(haversineDistanceKm(b, a), 9);
   });
 

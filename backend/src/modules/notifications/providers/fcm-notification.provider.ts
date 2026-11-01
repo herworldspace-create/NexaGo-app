@@ -1,7 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import type { App } from 'firebase-admin/app';
 import { AppConfigService } from '../../../config/app-config.service';
-import { NotificationProvider, PushMessage, PushSendOutcome } from '../interfaces/notification-provider.interface';
+import {
+  NotificationProvider,
+  PushMessage,
+  PushSendOutcome,
+} from '../interfaces/notification-provider.interface';
 
 /**
  * Real integration via the official `firebase-admin` SDK — FCM is the
@@ -41,7 +45,9 @@ export class FcmNotificationProvider implements NotificationProvider, OnModuleIn
 
   async send(message: PushMessage): Promise<PushSendOutcome> {
     if (!this.app) {
-      this.logger.warn(`FCM not configured — would have sent "${message.title}" to a device. Skipping.`);
+      this.logger.warn(
+        `FCM not configured — would have sent "${message.title}" to a device. Skipping.`,
+      );
       return { status: 'failed', reason: 'FCM is not configured.' };
     }
 
@@ -56,10 +62,15 @@ export class FcmNotificationProvider implements NotificationProvider, OnModuleIn
     } catch (error: any) {
       // Firebase's documented error codes for a dead/invalid token.
       const code = error?.errorInfo?.code ?? error?.code;
-      if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token') {
+      if (
+        code === 'messaging/registration-token-not-registered' ||
+        code === 'messaging/invalid-registration-token'
+      ) {
         return { status: 'invalid_token' };
       }
-      this.logger.error(`FCM send failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `FCM send failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return { status: 'failed', reason: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

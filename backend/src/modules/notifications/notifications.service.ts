@@ -1,7 +1,10 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 import { NotificationStatus, DevicePlatform } from '../../common/enums/notification.enum';
-import { NOTIFICATION_PROVIDER, NotificationProvider } from './interfaces/notification-provider.interface';
+import {
+  NOTIFICATION_PROVIDER,
+  NotificationProvider,
+} from './interfaces/notification-provider.interface';
 import { NotificationContent } from './notification-content.util';
 
 @Injectable()
@@ -37,7 +40,11 @@ export class NotificationsService {
    * push is a delivery nicety on top of it. A device reported dead by
    * the provider is deactivated so we stop wasting sends on it.
    */
-  async notify(userId: string, content: NotificationContent, data?: Record<string, string>): Promise<void> {
+  async notify(
+    userId: string,
+    content: NotificationContent,
+    data?: Record<string, string>,
+  ): Promise<void> {
     const notification = await this.prisma.notification.create({
       data: {
         userId,
@@ -72,7 +79,10 @@ export class NotificationsService {
       if (outcome.status === 'sent') {
         successCount += 1;
       } else if (outcome.status === 'invalid_token') {
-        await this.prisma.deviceToken.update({ where: { id: deviceToken.id }, data: { isActive: false } });
+        await this.prisma.deviceToken.update({
+          where: { id: deviceToken.id },
+          data: { isActive: false },
+        });
       }
     }
 
@@ -94,7 +104,9 @@ export class NotificationsService {
   }
 
   async markRead(userId: string, notificationId: string) {
-    const notification = await this.prisma.notification.findUnique({ where: { id: notificationId } });
+    const notification = await this.prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
     if (!notification) {
       throw new NotFoundException('Notification not found.');
     }
@@ -104,7 +116,10 @@ export class NotificationsService {
     if (notification.readAt) {
       return notification;
     }
-    return this.prisma.notification.update({ where: { id: notificationId }, data: { readAt: new Date() } });
+    return this.prisma.notification.update({
+      where: { id: notificationId },
+      data: { readAt: new Date() },
+    });
   }
 
   async getUnreadCount(userId: string): Promise<number> {

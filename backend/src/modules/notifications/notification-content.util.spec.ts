@@ -1,5 +1,9 @@
 import { RideStatus } from '../../common/enums/ride-status.enum';
-import { rideStatusNotificationFor, paymentPaidNotification, newRideNearbyNotification } from './notification-content.util';
+import {
+  rideStatusNotificationFor,
+  paymentPaidNotification,
+  newRideNearbyNotification,
+} from './notification-content.util';
 
 describe('rideStatusNotificationFor', () => {
   it('tells the passenger when a driver accepts', () => {

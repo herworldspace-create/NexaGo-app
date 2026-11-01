@@ -9,7 +9,10 @@ function buildConfig(webhookSecret?: string): AppConfigService {
 describe('PaystackPaymentProvider', () => {
   describe('verifyWebhookSignature', () => {
     const secret = 'whsec_test';
-    const rawBody = JSON.stringify({ event: 'charge.success', data: { reference: 'abc', amount: 1000 } });
+    const rawBody = JSON.stringify({
+      event: 'charge.success',
+      data: { reference: 'abc', amount: 1000 },
+    });
 
     it('accepts a correctly-signed payload', () => {
       const provider = new PaystackPaymentProvider(buildConfig(secret));
@@ -20,7 +23,9 @@ describe('PaystackPaymentProvider', () => {
 
     it('rejects a payload signed with the wrong secret', () => {
       const provider = new PaystackPaymentProvider(buildConfig(secret));
-      const wrongSignature = createHmac('sha512', 'a-different-secret').update(rawBody).digest('hex');
+      const wrongSignature = createHmac('sha512', 'a-different-secret')
+        .update(rawBody)
+        .digest('hex');
 
       expect(provider.verifyWebhookSignature(rawBody, wrongSignature)).toBe(false);
     });
@@ -28,7 +33,10 @@ describe('PaystackPaymentProvider', () => {
     it('rejects a tampered body even with a signature computed for the original body', () => {
       const provider = new PaystackPaymentProvider(buildConfig(secret));
       const originalSignature = createHmac('sha512', secret).update(rawBody).digest('hex');
-      const tamperedBody = JSON.stringify({ event: 'charge.success', data: { reference: 'abc', amount: 999999 } });
+      const tamperedBody = JSON.stringify({
+        event: 'charge.success',
+        data: { reference: 'abc', amount: 999999 },
+      });
 
       expect(provider.verifyWebhookSignature(tamperedBody, originalSignature)).toBe(false);
     });
@@ -50,7 +58,12 @@ describe('PaystackPaymentProvider', () => {
       const provider = new PaystackPaymentProvider(buildConfig('secret'));
       const rawBody = JSON.stringify({
         event: 'charge.success',
-        data: { reference: 'ref-123', amount: 150_000, status: 'success', customer: { email: 'a@b.com' } },
+        data: {
+          reference: 'ref-123',
+          amount: 150_000,
+          status: 'success',
+          customer: { email: 'a@b.com' },
+        },
       });
 
       const result = provider.parseWebhookEvent(rawBody);

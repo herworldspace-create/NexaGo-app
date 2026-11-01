@@ -14,7 +14,7 @@ function buildPrismaMock() {
     driverProfile: { findUnique: jest.fn() },
     walletTransaction: { findMany: jest.fn() },
     withdrawal: { findMany: jest.fn() },
-    $transaction: jest.fn((cb: (tx: typeof tx) => unknown) => cb(tx)),
+    $transaction: jest.fn((cb: (tx: any) => unknown) => cb(tx)),
     __tx: tx,
   };
 }
@@ -36,13 +36,19 @@ describe('WalletService', () => {
 
       await service.creditForJob('driver-1', 'ride-1', 100_000, 'Ride earnings');
 
-      expect(prisma.driverWallet.create).toHaveBeenCalledWith({ data: { driverProfileId: 'driver-1' } });
+      expect(prisma.driverWallet.create).toHaveBeenCalledWith({
+        data: { driverProfileId: 'driver-1' },
+      });
       expect(prisma.__tx.driverWallet.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { balanceKobo: { increment: 100_000 } } }),
       );
       expect(prisma.__tx.walletTransaction.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ type: WalletTransactionType.CREDIT, amountKobo: 100_000, referenceId: 'ride-1' }),
+          data: expect.objectContaining({
+            type: WalletTransactionType.CREDIT,
+            amountKobo: 100_000,
+            referenceId: 'ride-1',
+          }),
         }),
       );
     });
@@ -77,7 +83,9 @@ describe('WalletService', () => {
       prisma.driverWallet.findUnique.mockResolvedValue({ id: 'wallet-1' });
       prisma.__tx.driverWallet.updateMany.mockResolvedValue({ count: 0 });
 
-      await expect(service.requestWithdrawal('user-1', 1_000_000)).rejects.toThrow(BadRequestException);
+      await expect(service.requestWithdrawal('user-1', 1_000_000)).rejects.toThrow(
+        BadRequestException,
+      );
       expect(prisma.__tx.withdrawal.create).not.toHaveBeenCalled();
       expect(prisma.__tx.walletTransaction.create).not.toHaveBeenCalled();
     });

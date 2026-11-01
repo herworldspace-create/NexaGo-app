@@ -1,4 +1,13 @@
-import { IsInt, IsOptional, IsPhoneNumber, IsString, Length, Matches, Min, MaxLength } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsPhoneNumber,
+  IsString,
+  Length,
+  Matches,
+  Min,
+  MaxLength,
+} from 'class-validator';
 
 export class TransferDto {
   @IsPhoneNumber('NG', { message: 'A valid Nigerian phone number is required for the recipient.' })

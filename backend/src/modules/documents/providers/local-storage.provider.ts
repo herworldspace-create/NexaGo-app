@@ -15,7 +15,11 @@ import { StorageProvider, StoredFileMetadata } from '../storage-provider.interfa
 export class LocalStorageProvider implements StorageProvider {
   constructor(private readonly config: AppConfigService) {}
 
-  async store(params: { key: string; buffer: Buffer; mimeType: string }): Promise<StoredFileMetadata> {
+  async store(params: {
+    key: string;
+    buffer: Buffer;
+    mimeType: string;
+  }): Promise<StoredFileMetadata> {
     const safeKey = this.sanitizeKey(params.key);
     const fullPath = join(process.cwd(), this.config.storage.localPath, safeKey);
     await mkdir(dirname(fullPath), { recursive: true });

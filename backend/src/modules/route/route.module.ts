@@ -15,8 +15,11 @@ import { MapboxRouteProvider } from './providers/mapbox-route.provider';
     {
       provide: ROUTE_PROVIDER,
       inject: [AppConfigService, MockRouteProvider, MapboxRouteProvider],
-      useFactory: (config: AppConfigService, mock: MockRouteProvider, mapbox: MapboxRouteProvider) =>
-        config.route.provider === 'mapbox' ? mapbox : mock,
+      useFactory: (
+        config: AppConfigService,
+        mock: MockRouteProvider,
+        mapbox: MapboxRouteProvider,
+      ) => (config.route.provider === 'mapbox' ? mapbox : mock),
     },
   ],
   exports: [RouteService],

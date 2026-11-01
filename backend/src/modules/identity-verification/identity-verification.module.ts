@@ -16,7 +16,11 @@ import { LiveIdentityVerificationProvider } from './providers/live-identity-veri
     LiveIdentityVerificationProvider,
     {
       provide: IDENTITY_VERIFICATION_SERVICE,
-      inject: [AppConfigService, MockIdentityVerificationProvider, LiveIdentityVerificationProvider],
+      inject: [
+        AppConfigService,
+        MockIdentityVerificationProvider,
+        LiveIdentityVerificationProvider,
+      ],
       useFactory: (
         config: AppConfigService,
         mock: MockIdentityVerificationProvider,

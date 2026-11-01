@@ -37,7 +37,15 @@ function buildGateway() {
   );
   gateway.server = { to: jest.fn().mockReturnValue({ emit: jest.fn() }) } as any;
 
-  return { gateway, jwtService, config, prisma, ridesService, deliveriesService, driverLocationService };
+  return {
+    gateway,
+    jwtService,
+    config,
+    prisma,
+    ridesService,
+    deliveriesService,
+    driverLocationService,
+  };
 }
 
 describe('RealtimeGateway', () => {
@@ -47,7 +55,9 @@ describe('RealtimeGateway', () => {
       const client = buildSocketMock(undefined);
 
       await expect(
-        gateway.handleRideSubscribe(client as any, { rideId: '123e4567-e89b-12d3-a456-426614174000' }),
+        gateway.handleRideSubscribe(client as any, {
+          rideId: '123e4567-e89b-12d3-a456-426614174000',
+        }),
       ).rejects.toThrow(WsException);
     });
 
@@ -55,9 +65,9 @@ describe('RealtimeGateway', () => {
       const { gateway, ridesService } = buildGateway();
       const client = buildSocketMock({ userId: 'user-1', role: Role.PASSENGER, sessionId: 's1' });
 
-      await expect(gateway.handleRideSubscribe(client as any, { rideId: 'not-a-uuid' })).rejects.toThrow(
-        WsException,
-      );
+      await expect(
+        gateway.handleRideSubscribe(client as any, { rideId: 'not-a-uuid' }),
+      ).rejects.toThrow(WsException);
       expect(ridesService.getRide).not.toHaveBeenCalled();
     });
 
@@ -67,7 +77,9 @@ describe('RealtimeGateway', () => {
       ridesService.getRide.mockRejectedValue(new ForbiddenException('nope'));
 
       await expect(
-        gateway.handleRideSubscribe(client as any, { rideId: '123e4567-e89b-12d3-a456-426614174000' }),
+        gateway.handleRideSubscribe(client as any, {
+          rideId: '123e4567-e89b-12d3-a456-426614174000',
+        }),
       ).rejects.toThrow(ForbiddenException);
       expect(client.join).not.toHaveBeenCalled();
     });
@@ -109,19 +121,36 @@ describe('RealtimeGateway', () => {
     it('updates location and broadcasts to the ride room only (no driver profile data)', async () => {
       const { gateway, ridesService, driverLocationService } = buildGateway();
       const client = buildSocketMock({ userId: 'driver-1', role: Role.DRIVER, sessionId: 's1' });
-      ridesService.getCurrentForDriver.mockResolvedValue({ id: 'ride-1', status: RideStatus.IN_PROGRESS });
+      ridesService.getCurrentForDriver.mockResolvedValue({
+        id: 'ride-1',
+        status: RideStatus.IN_PROGRESS,
+      });
 
       const emit = jest.fn();
       gateway.server = { to: jest.fn().mockReturnValue({ emit }) } as any;
 
-      await gateway.handleDriverLocation(client as any, { latitude: 11.85, longitude: 13.16, heading: 90 });
+      await gateway.handleDriverLocation(client as any, {
+        latitude: 11.85,
+        longitude: 13.16,
+        heading: 90,
+      });
 
-      expect(driverLocationService.updatePositionOnly).toHaveBeenCalledWith('driver-1', 11.85, 13.16, 90);
+      expect(driverLocationService.updatePositionOnly).toHaveBeenCalledWith(
+        'driver-1',
+        11.85,
+        13.16,
+        90,
+      );
       expect(gateway.server.to).toHaveBeenCalledWith('ride:ride-1');
       const [eventName, payload] = emit.mock.calls[0];
       expect(eventName).toBe('ride:driver_location');
       expect(payload).toEqual(
-        expect.objectContaining({ rideId: 'ride-1', latitude: 11.85, longitude: 13.16, heading: 90 }),
+        expect.objectContaining({
+          rideId: 'ride-1',
+          latitude: 11.85,
+          longitude: 13.16,
+          heading: 90,
+        }),
       );
       expect(payload).not.toHaveProperty('driverUserId');
       expect(payload).not.toHaveProperty('fullName');
@@ -168,14 +197,19 @@ describe('RealtimeGateway', () => {
     it('joins the delivery room once authorized', async () => {
       const { gateway, deliveriesService } = buildGateway();
       const client = buildSocketMock({ userId: 'user-1', role: Role.PASSENGER, sessionId: 's1' });
-      deliveriesService.getDelivery.mockResolvedValue({ id: '123e4567-e89b-12d3-a456-426614174000' });
+      deliveriesService.getDelivery.mockResolvedValue({
+        id: '123e4567-e89b-12d3-a456-426614174000',
+      });
 
       const result = await gateway.handleDeliverySubscribe(client as any, {
         deliveryId: '123e4567-e89b-12d3-a456-426614174000',
       });
 
       expect(client.join).toHaveBeenCalledWith('delivery:123e4567-e89b-12d3-a456-426614174000');
-      expect(result).toEqual({ subscribed: true, deliveryId: '123e4567-e89b-12d3-a456-426614174000' });
+      expect(result).toEqual({
+        subscribed: true,
+        deliveryId: '123e4567-e89b-12d3-a456-426614174000',
+      });
     });
   });
 
@@ -184,7 +218,10 @@ describe('RealtimeGateway', () => {
       const { gateway, ridesService, deliveriesService } = buildGateway();
       const client = buildSocketMock({ userId: 'driver-1', role: Role.DRIVER, sessionId: 's1' });
       ridesService.getCurrentForDriver.mockResolvedValue(null);
-      deliveriesService.getCurrentForDriver.mockResolvedValue({ id: 'delivery-1', status: 'IN_TRANSIT' });
+      deliveriesService.getCurrentForDriver.mockResolvedValue({
+        id: 'delivery-1',
+        status: 'IN_TRANSIT',
+      });
 
       const emit = jest.fn();
       gateway.server = { to: jest.fn().mockReturnValue({ emit }) } as any;
@@ -232,7 +269,12 @@ describe('RealtimeGateway', () => {
   describe('handleConnection', () => {
     it('disconnects a socket with no token', async () => {
       const { gateway } = buildGateway();
-      const client = { handshake: { auth: {}, headers: {} }, join: jest.fn(), data: {}, disconnect: jest.fn() };
+      const client = {
+        handshake: { auth: {}, headers: {} },
+        join: jest.fn(),
+        data: {},
+        disconnect: jest.fn(),
+      };
 
       await gateway.handleConnection(client as any);
 
@@ -257,13 +299,22 @@ describe('RealtimeGateway', () => {
 
     it('joins the user room on successful auth', async () => {
       const { gateway, jwtService, prisma } = buildGateway();
-      jwtService.verifyAsync.mockResolvedValue({ sub: 'user-1', role: Role.PASSENGER, sid: 'session-1' });
+      jwtService.verifyAsync.mockResolvedValue({
+        sub: 'user-1',
+        role: Role.PASSENGER,
+        sid: 'session-1',
+      });
       prisma.deviceSession.findUnique.mockResolvedValue({
         id: 'session-1',
         isRevoked: false,
         expiresAt: new Date(Date.now() + 60_000),
       });
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: Role.PASSENGER, status: 'ACTIVE', deletedAt: null });
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        role: Role.PASSENGER,
+        status: 'ACTIVE',
+        deletedAt: null,
+      });
 
       const client = {
         handshake: { auth: { token: 'good' }, headers: {} },
@@ -276,7 +327,11 @@ describe('RealtimeGateway', () => {
 
       expect(client.disconnect).not.toHaveBeenCalled();
       expect(client.join).toHaveBeenCalledWith('user:user-1');
-      expect(client.data.user).toEqual({ userId: 'user-1', role: Role.PASSENGER, sessionId: 'session-1' });
+      expect(client.data.user).toEqual({
+        userId: 'user-1',
+        role: Role.PASSENGER,
+        sessionId: 'session-1',
+      });
     });
   });
 });

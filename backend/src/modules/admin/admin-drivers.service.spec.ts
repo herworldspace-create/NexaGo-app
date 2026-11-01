@@ -1,11 +1,19 @@
 import { BadRequestException } from '@nestjs/common';
 import { AdminDriversService } from './admin-drivers.service';
-import { DocumentStatus, DriverDocumentType, DriverVerificationStatus } from '../../common/enums/verification-status.enum';
+import {
+  DocumentStatus,
+  DriverDocumentType,
+  DriverVerificationStatus,
+} from '../../common/enums/verification-status.enum';
 import { Role } from '../../common/enums/role.enum';
 import { PrismaService } from '../../config/prisma.service';
 import { StorageProvider } from '../documents/storage-provider.interface';
 
-function buildDoc(type: DriverDocumentType, status: DocumentStatus, expiryDate: Date | null = null) {
+function buildDoc(
+  type: DriverDocumentType,
+  status: DocumentStatus,
+  expiryDate: Date | null = null,
+) {
   return { type, status, expiryDate, version: 1 };
 }
 
@@ -62,7 +70,10 @@ describe('AdminDriversService', () => {
         driverProfileId: 'driver-1',
         expiryDate: null,
       });
-      prisma.driverDocument.update.mockResolvedValue({ id: 'doc-last', status: DocumentStatus.APPROVED });
+      prisma.driverDocument.update.mockResolvedValue({
+        id: 'doc-last',
+        status: DocumentStatus.APPROVED,
+      });
 
       prisma.driverProfile.findUnique.mockResolvedValue({
         id: 'driver-1',
@@ -124,7 +135,11 @@ describe('AdminDriversService', () => {
       });
 
       prisma.driverDocument.findMany.mockResolvedValue([
-        buildDoc(DriverDocumentType.DRIVERS_LICENCE, DocumentStatus.APPROVED, new Date(Date.now() - 1000)),
+        buildDoc(
+          DriverDocumentType.DRIVERS_LICENCE,
+          DocumentStatus.APPROVED,
+          new Date(Date.now() - 1000),
+        ),
         buildDoc(DriverDocumentType.VEHICLE_REGISTRATION, DocumentStatus.APPROVED),
         buildDoc(DriverDocumentType.VEHICLE_INSURANCE, DocumentStatus.APPROVED),
         buildDoc(DriverDocumentType.ROADWORTHINESS_CERTIFICATE, DocumentStatus.APPROVED),
@@ -138,7 +153,10 @@ describe('AdminDriversService', () => {
 
   describe('rejectDocument', () => {
     it('moves the driver to DOCUMENT_REJECTED when currently in DOCUMENT_REVIEW', async () => {
-      prisma.driverDocument.findUnique.mockResolvedValue({ id: 'doc-1', driverProfileId: 'driver-1' });
+      prisma.driverDocument.findUnique.mockResolvedValue({
+        id: 'doc-1',
+        driverProfileId: 'driver-1',
+      });
       prisma.driverDocument.update.mockResolvedValue({});
       prisma.driverProfile.findUnique.mockResolvedValue({
         id: 'driver-1',

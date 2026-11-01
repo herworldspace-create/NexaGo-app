@@ -1,6 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
-import { DocumentStatus, DriverVerificationStatus } from '../../common/enums/verification-status.enum';
+import {
+  DocumentStatus,
+  DriverVerificationStatus,
+} from '../../common/enums/verification-status.enum';
 import { assertValidTransition, canAcceptRides } from './driver-verification.state-machine';
 import { MANDATORY_DRIVER_DOCUMENT_TYPES } from './mandatory-documents.const';
 
@@ -17,7 +20,9 @@ export class DriverVerificationService {
   constructor(private readonly prisma: PrismaService) {}
 
   async submitProfile(params: SubmitProfileParams) {
-    const profile = await this.prisma.driverProfile.findUnique({ where: { userId: params.userId } });
+    const profile = await this.prisma.driverProfile.findUnique({
+      where: { userId: params.userId },
+    });
     if (!profile) {
       throw new NotFoundException('Driver profile not found.');
     }
@@ -61,7 +66,9 @@ export class DriverVerificationService {
     }
     return {
       status: profile.verificationStatus,
-      canAcceptRides: canAcceptRides(profile.verificationStatus as unknown as DriverVerificationStatus),
+      canAcceptRides: canAcceptRides(
+        profile.verificationStatus as unknown as DriverVerificationStatus,
+      ),
     };
   }
 
@@ -80,7 +87,10 @@ export class DriverVerificationService {
       include: { documents: true },
     });
 
-    if (!profile || !canAcceptRides(profile.verificationStatus as unknown as DriverVerificationStatus)) {
+    if (
+      !profile ||
+      !canAcceptRides(profile.verificationStatus as unknown as DriverVerificationStatus)
+    ) {
       throw new BadRequestException('Driver is not eligible to accept rides at this time.');
     }
 
@@ -99,7 +109,9 @@ export class DriverVerificationService {
     });
 
     if (!allMandatorySatisfied) {
-      throw new BadRequestException('One or more mandatory documents are missing, unapproved, or expired.');
+      throw new BadRequestException(
+        'One or more mandatory documents are missing, unapproved, or expired.',
+      );
     }
   }
 }

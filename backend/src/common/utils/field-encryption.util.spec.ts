@@ -31,7 +31,7 @@ describe('FieldEncryptionService', () => {
   it('fails to decrypt if the payload has been tampered with', () => {
     const service = new FieldEncryptionService(buildConfig(key));
     const encrypted = service.encrypt('sensitive-reference-value');
-    const [iv, tag, data] = encrypted.split('.');
+    const [iv, tag] = encrypted.split('.');
     const tampered = [iv, tag, Buffer.from('tampered').toString('base64')].join('.');
     expect(() => service.decrypt(tampered)).toThrow();
   });

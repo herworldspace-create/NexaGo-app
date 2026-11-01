@@ -21,7 +21,9 @@ export class ComplaintsService {
       // (not guessed) when the complaint isn't about the counterpart —
       // e.g. the rider was alone in the car and driverUserId is null.
       againstUserId =
-        ride.passengerUserId === raisedByUserId ? (ride.driverUserId ?? undefined) : ride.passengerUserId;
+        ride.passengerUserId === raisedByUserId
+          ? (ride.driverUserId ?? undefined)
+          : ride.passengerUserId;
     }
 
     return this.prisma.complaint.create({

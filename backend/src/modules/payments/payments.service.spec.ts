@@ -18,7 +18,7 @@ function buildPrismaMock() {
     payment: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     driverProfile: { findUnique: jest.fn() },
     transaction: { create: jest.fn() },
-    $transaction: jest.fn((cb: (tx: typeof tx) => unknown) => cb(tx)),
+    $transaction: jest.fn((cb: (tx: any) => unknown) => cb(tx)),
     __tx: tx,
   };
 }
@@ -65,12 +65,21 @@ describe('PaymentsService', () => {
     prisma = buildPrismaMock();
     provider = buildPaymentProviderMock();
     wallet = buildWalletServiceMock();
-    service = new PaymentsService(prisma as unknown as PrismaService, wallet, { emit: jest.fn() } as any, provider);
+    service = new PaymentsService(
+      prisma as unknown as PrismaService,
+      wallet,
+      {} as any,
+      { emit: jest.fn() } as any,
+      provider,
+    );
   });
 
   describe('initiatePayment — ride', () => {
     it('rejects a ride that is not completed', async () => {
-      prisma.ride.findUnique.mockResolvedValue({ ...completedRide, status: RideStatus.IN_PROGRESS });
+      prisma.ride.findUnique.mockResolvedValue({
+        ...completedRide,
+        status: RideStatus.IN_PROGRESS,
+      });
       await expect(
         service.initiatePayment('ride', 'ride-1', 'passenger-1', { method: PaymentMethod.CASH }),
       ).rejects.toThrow(BadRequestException);
@@ -105,7 +114,9 @@ describe('PaymentsService', () => {
       prisma.payment.findUnique.mockResolvedValue(null);
       prisma.payment.create.mockResolvedValue({ id: 'payment-1' });
 
-      const result = await service.initiatePayment('ride', 'ride-1', 'passenger-1', { method: PaymentMethod.CASH });
+      const result = await service.initiatePayment('ride', 'ride-1', 'passenger-1', {
+        method: PaymentMethod.CASH,
+      });
 
       expect(provider.initialize).not.toHaveBeenCalled();
       expect(result.authorizationUrl).toBeNull();
@@ -117,31 +128,47 @@ describe('PaymentsService', () => {
     it('marks the payment FAILED if the gateway initialize call throws', async () => {
       prisma.ride.findUnique.mockResolvedValue(completedRide);
       prisma.payment.findUnique.mockResolvedValue(null);
-      prisma.payment.create.mockResolvedValue({ id: 'payment-1', amountKobo: 150_000, currency: 'NGN' });
+      prisma.payment.create.mockResolvedValue({
+        id: 'payment-1',
+        amountKobo: 150_000,
+        currency: 'NGN',
+      });
       provider.initialize.mockRejectedValue(new Error('network down'));
 
       await expect(
-        service.initiatePayment('ride', 'ride-1', 'passenger-1', { method: PaymentMethod.CARD, email: 'a@b.com' }),
+        service.initiatePayment('ride', 'ride-1', 'passenger-1', {
+          method: PaymentMethod.CARD,
+          email: 'a@b.com',
+        }),
       ).rejects.toThrow(BadRequestException);
 
       expect(prisma.payment.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: PaymentStatus.FAILED }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: PaymentStatus.FAILED }),
+        }),
       );
     });
   });
 
   describe('initiatePayment — delivery', () => {
     it('rejects a delivery that has not been DELIVERED yet', async () => {
-      prisma.delivery.findUnique.mockResolvedValue({ ...completedDelivery, status: DeliveryStatus.IN_TRANSIT });
+      prisma.delivery.findUnique.mockResolvedValue({
+        ...completedDelivery,
+        status: DeliveryStatus.IN_TRANSIT,
+      });
       await expect(
-        service.initiatePayment('delivery', 'delivery-1', 'sender-1', { method: PaymentMethod.CASH }),
+        service.initiatePayment('delivery', 'delivery-1', 'sender-1', {
+          method: PaymentMethod.CASH,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects a sender who does not own the delivery', async () => {
       prisma.delivery.findUnique.mockResolvedValue(completedDelivery);
       await expect(
-        service.initiatePayment('delivery', 'delivery-1', 'someone-else', { method: PaymentMethod.CASH }),
+        service.initiatePayment('delivery', 'delivery-1', 'someone-else', {
+          method: PaymentMethod.CASH,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -150,7 +177,9 @@ describe('PaymentsService', () => {
       prisma.payment.findUnique.mockResolvedValue(null);
       prisma.payment.create.mockResolvedValue({ id: 'payment-1' });
 
-      await service.initiatePayment('delivery', 'delivery-1', 'sender-1', { method: PaymentMethod.CASH });
+      await service.initiatePayment('delivery', 'delivery-1', 'sender-1', {
+        method: PaymentMethod.CASH,
+      });
 
       expect(prisma.payment.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ deliveryId: 'delivery-1' }) }),
@@ -217,7 +246,9 @@ describe('PaymentsService', () => {
       await service.handleWebhook('{}', 'sig');
 
       expect(prisma.payment.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: PaymentStatus.FAILED }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: PaymentStatus.FAILED }),
+        }),
       );
       expect(wallet.creditForJob).not.toHaveBeenCalled();
     });
@@ -244,7 +275,12 @@ describe('PaymentsService', () => {
         expect.objectContaining({ data: expect.objectContaining({ status: PaymentStatus.PAID }) }),
       );
       // 150,000 total, 20% commission = 30,000 → driver gets 120,000.
-      expect(wallet.creditForJob).toHaveBeenCalledWith('driver-profile-1', 'ride-1', 120_000, expect.any(String));
+      expect(wallet.creditForJob).toHaveBeenCalledWith(
+        'driver-profile-1',
+        'ride-1',
+        120_000,
+        expect.any(String),
+      );
     });
 
     it('marks the payment FAILED (no crediting) when the gateway reports failure', async () => {
@@ -265,7 +301,9 @@ describe('PaymentsService', () => {
       await service.handleWebhook('{}', 'sig');
 
       expect(prisma.payment.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: PaymentStatus.FAILED }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: PaymentStatus.FAILED }),
+        }),
       );
       expect(wallet.creditForJob).not.toHaveBeenCalled();
     });
@@ -305,26 +343,45 @@ describe('PaymentsService', () => {
       await service.handleWebhook('{}', 'sig');
 
       // 80,000 total, 10% commission = 8,000 → driver gets 72,000.
-      expect(wallet.creditForJob).toHaveBeenCalledWith('driver-profile-1', 'delivery-1', 72_000, expect.any(String));
+      expect(wallet.creditForJob).toHaveBeenCalledWith(
+        'driver-profile-1',
+        'delivery-1',
+        72_000,
+        expect.any(String),
+      );
     });
   });
 
   describe('confirmCashPayment — ride', () => {
     it('rejects a driver not assigned to the ride', async () => {
       prisma.ride.findUnique.mockResolvedValue(completedRide);
-      await expect(service.confirmCashPayment('ride', 'ride-1', 'someone-else')).rejects.toThrow(ForbiddenException);
+      await expect(service.confirmCashPayment('ride', 'ride-1', 'someone-else')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('rejects confirming a non-cash payment', async () => {
       prisma.ride.findUnique.mockResolvedValue(completedRide);
-      prisma.payment.findUnique.mockResolvedValue({ id: 'payment-1', method: PaymentMethod.CARD, status: PaymentStatus.PROCESSING });
-      await expect(service.confirmCashPayment('ride', 'ride-1', 'driver-1')).rejects.toThrow(BadRequestException);
+      prisma.payment.findUnique.mockResolvedValue({
+        id: 'payment-1',
+        method: PaymentMethod.CARD,
+        status: PaymentStatus.PROCESSING,
+      });
+      await expect(service.confirmCashPayment('ride', 'ride-1', 'driver-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('rejects confirming an already-paid cash payment', async () => {
       prisma.ride.findUnique.mockResolvedValue(completedRide);
-      prisma.payment.findUnique.mockResolvedValue({ id: 'payment-1', method: PaymentMethod.CASH, status: PaymentStatus.PAID });
-      await expect(service.confirmCashPayment('ride', 'ride-1', 'driver-1')).rejects.toThrow(BadRequestException);
+      prisma.payment.findUnique.mockResolvedValue({
+        id: 'payment-1',
+        method: PaymentMethod.CASH,
+        status: PaymentStatus.PAID,
+      });
+      await expect(service.confirmCashPayment('ride', 'ride-1', 'driver-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('marks cash payment PAID and credits the driver wallet', async () => {
@@ -340,16 +397,21 @@ describe('PaymentsService', () => {
 
       await service.confirmCashPayment('ride', 'ride-1', 'driver-1');
 
-      expect(wallet.creditForJob).toHaveBeenCalledWith('driver-profile-1', 'ride-1', 120_000, expect.any(String));
+      expect(wallet.creditForJob).toHaveBeenCalledWith(
+        'driver-profile-1',
+        'ride-1',
+        120_000,
+        expect.any(String),
+      );
     });
   });
 
   describe('confirmCashPayment — delivery', () => {
     it('rejects a driver not assigned to the delivery', async () => {
       prisma.delivery.findUnique.mockResolvedValue(completedDelivery);
-      await expect(service.confirmCashPayment('delivery', 'delivery-1', 'someone-else')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.confirmCashPayment('delivery', 'delivery-1', 'someone-else'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('marks cash payment PAID and credits the driver wallet (fare minus commission)', async () => {
@@ -365,7 +427,12 @@ describe('PaymentsService', () => {
 
       await service.confirmCashPayment('delivery', 'delivery-1', 'driver-1');
 
-      expect(wallet.creditForJob).toHaveBeenCalledWith('driver-profile-1', 'delivery-1', 72_000, expect.any(String));
+      expect(wallet.creditForJob).toHaveBeenCalledWith(
+        'driver-profile-1',
+        'delivery-1',
+        72_000,
+        expect.any(String),
+      );
     });
   });
 
@@ -379,23 +446,28 @@ describe('PaymentsService', () => {
 
     it('rejects an unrelated user on a ride', async () => {
       prisma.ride.findUnique.mockResolvedValue(completedRide);
-      await expect(service.getPayment('ride', 'ride-1', 'stranger', 'PASSENGER' as any)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.getPayment('ride', 'ride-1', 'stranger', 'PASSENGER' as any),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('allows the sender on a delivery', async () => {
       prisma.delivery.findUnique.mockResolvedValue(completedDelivery);
       prisma.payment.findUnique.mockResolvedValue({ id: 'payment-1' });
-      const result = await service.getPayment('delivery', 'delivery-1', 'sender-1', 'PASSENGER' as any);
+      const result = await service.getPayment(
+        'delivery',
+        'delivery-1',
+        'sender-1',
+        'PASSENGER' as any,
+      );
       expect(result).toEqual({ id: 'payment-1' });
     });
 
     it('rejects an unrelated user on a delivery', async () => {
       prisma.delivery.findUnique.mockResolvedValue(completedDelivery);
-      await expect(service.getPayment('delivery', 'delivery-1', 'stranger', 'PASSENGER' as any)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.getPayment('delivery', 'delivery-1', 'stranger', 'PASSENGER' as any),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

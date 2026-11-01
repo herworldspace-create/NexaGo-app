@@ -1,9 +1,4 @@
-
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 import { computeFare, FareBreakdown } from './fare-calculation.util';
 
@@ -37,9 +32,7 @@ export class FareService {
     }
 
     if (params.distanceKm < 0 || params.durationMinutes < 0) {
-      throw new BadRequestException(
-        'Distance and duration must not be negative.',
-      );
+      throw new BadRequestException('Distance and duration must not be negative.');
     }
 
     const surge = await this.resolveSurgeMultiplier(
@@ -54,11 +47,9 @@ export class FareService {
         perKmRateKobo: config.perKmRateKobo,
         perMinuteRateKobo: config.perMinuteRateKobo,
         serviceFeeFlatKobo: config.serviceFeeFlatKobo,
-        serviceFeePercentBasisPoints:
-          config.serviceFeePercentBasisPoints,
+        serviceFeePercentBasisPoints: config.serviceFeePercentBasisPoints,
         minimumFareKobo: config.minimumFareKobo,
-        platformCommissionBasisPoints:
-          config.platformCommissionBasisPoints,
+        platformCommissionBasisPoints: config.platformCommissionBasisPoints,
       },
       distanceKm: params.distanceKm,
       durationMinutes: params.durationMinutes,
@@ -118,15 +109,14 @@ export class FareService {
     operatingAreaId: string,
     vehicleCategoryId: string,
   ): Promise<number> {
-    const categorySpecific =
-      await this.prisma.surgeSetting.findFirst({
-        where: {
-          operatingAreaId,
-          vehicleCategoryId,
-          isActive: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+    const categorySpecific = await this.prisma.surgeSetting.findFirst({
+      where: {
+        operatingAreaId,
+        vehicleCategoryId,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
     if (categorySpecific) {
       return categorySpecific.multiplierBasisPoints;

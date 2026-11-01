@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../config/prisma.service';
 import { AppConfigService } from '../../config/app-config.service';
@@ -49,7 +54,10 @@ export class UserWalletService {
     }
 
     const newHash = hmacHash(dto.newPin, this.config.jwt.accessSecret);
-    await this.prisma.userWallet.update({ where: { id: wallet.id }, data: { transactionPinHash: newHash } });
+    await this.prisma.userWallet.update({
+      where: { id: wallet.id },
+      data: { transactionPinHash: newHash },
+    });
   }
 
   /** Called by PaymentsService once a wallet-funding payment settles (webhook success). */
@@ -86,7 +94,13 @@ export class UserWalletService {
    * so a crash between the two is impossible — either both happen or
    * neither does.
    */
-  async transfer(fromUserId: string, recipientPhone: string, amountKobo: number, pin: string, note?: string) {
+  async transfer(
+    fromUserId: string,
+    recipientPhone: string,
+    amountKobo: number,
+    pin: string,
+    note?: string,
+  ) {
     const senderWallet = await this.getOrCreateWallet(fromUserId);
     await this.assertPinCorrect(senderWallet, pin);
 
@@ -109,7 +123,9 @@ export class UserWalletService {
         throw new BadRequestException('Insufficient wallet balance for this transfer.');
       }
 
-      const debitedWallet = await tx.userWallet.findUniqueOrThrow({ where: { id: senderWallet.id } });
+      const debitedWallet = await tx.userWallet.findUniqueOrThrow({
+        where: { id: senderWallet.id },
+      });
       const senderTxn = await tx.userWalletTransaction.create({
         data: {
           walletId: senderWallet.id,
@@ -150,7 +166,13 @@ export class UserWalletService {
    * exposed separately so VtuService doesn't need to know transfer
    * semantics (no recipient wallet involved).
    */
-  async debitForSpend(userId: string, amountKobo: number, pin: string, referenceId: string, description: string) {
+  async debitForSpend(
+    userId: string,
+    amountKobo: number,
+    pin: string,
+    referenceId: string,
+    description: string,
+  ) {
     const wallet = await this.getOrCreateWallet(userId);
     await this.assertPinCorrect(wallet, pin);
 
@@ -181,7 +203,12 @@ export class UserWalletService {
   }
 
   /** Reverses a debitForSpend when the downstream VTU purchase fails — see VtuService. */
-  async refundSpend(userId: string, amountKobo: number, referenceId: string, description: string): Promise<void> {
+  async refundSpend(
+    userId: string,
+    amountKobo: number,
+    referenceId: string,
+    description: string,
+  ): Promise<void> {
     const wallet = await this.getOrCreateWallet(userId);
 
     await this.prisma.$transaction(async (tx) => {
@@ -202,9 +229,14 @@ export class UserWalletService {
     });
   }
 
-  private async assertPinCorrect(wallet: { transactionPinHash: string | null }, pin: string): Promise<void> {
+  private async assertPinCorrect(
+    wallet: { transactionPinHash: string | null },
+    pin: string,
+  ): Promise<void> {
     if (!wallet.transactionPinHash) {
-      throw new BadRequestException('Set a transaction PIN before spending or transferring from your wallet.');
+      throw new BadRequestException(
+        'Set a transaction PIN before spending or transferring from your wallet.',
+      );
     }
     const candidateHash = hmacHash(pin, this.config.jwt.accessSecret);
     if (!constantTimeEquals(candidateHash, wallet.transactionPinHash)) {

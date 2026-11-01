@@ -31,10 +31,7 @@ describe('DriverVerificationStateMachine', () => {
 
   it('rejects transitions out of a terminal state', () => {
     expect(() =>
-      assertValidTransition(
-        DriverVerificationStatus.DEACTIVATED,
-        DriverVerificationStatus.ACTIVE,
-      ),
+      assertValidTransition(DriverVerificationStatus.DEACTIVATED, DriverVerificationStatus.ACTIVE),
     ).toThrow(InvalidDriverStatusTransitionError);
   });
 

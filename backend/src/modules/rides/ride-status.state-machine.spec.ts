@@ -1,5 +1,8 @@
 import { RideStatus } from '../../common/enums/ride-status.enum';
-import { assertValidRideTransition, InvalidRideStatusTransitionError } from './ride-status.state-machine';
+import {
+  assertValidRideTransition,
+  InvalidRideStatusTransitionError,
+} from './ride-status.state-machine';
 
 describe('ride status state machine', () => {
   it('allows the full happy path', () => {

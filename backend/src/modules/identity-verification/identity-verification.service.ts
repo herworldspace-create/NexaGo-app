@@ -40,7 +40,11 @@ export class IdentityVerificationAppService {
     const ninHash = hmacHash(params.nin, this.config.fieldEncryptionKey);
 
     const duplicate = await this.prisma.identityVerification.findFirst({
-      where: { ninHash, status: IdentityVerificationStatus.VERIFIED as any, NOT: { userId: params.userId } },
+      where: {
+        ninHash,
+        status: IdentityVerificationStatus.VERIFIED as any,
+        NOT: { userId: params.userId },
+      },
     });
     if (duplicate) {
       // Do not reveal that this NIN belongs to another account.
@@ -83,7 +87,10 @@ export class IdentityVerificationAppService {
       );
       await this.prisma.identityVerification.update({
         where: { id: record.id },
-        data: { status: IdentityVerificationStatus.FAILED as any, failureReason: 'Provider unavailable.' },
+        data: {
+          status: IdentityVerificationStatus.FAILED as any,
+          failureReason: 'Provider unavailable.',
+        },
       });
       throw new BadRequestException(
         'We could not complete identity verification right now. Please try again shortly.',

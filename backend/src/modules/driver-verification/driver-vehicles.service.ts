@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 
@@ -12,12 +17,16 @@ export class DriverVehiclesService {
       throw new NotFoundException('Driver profile not found.');
     }
 
-    const category = await this.prisma.vehicleCategory.findUnique({ where: { id: dto.vehicleCategoryId } });
+    const category = await this.prisma.vehicleCategory.findUnique({
+      where: { id: dto.vehicleCategoryId },
+    });
     if (!category || !category.isActive) {
       throw new BadRequestException('Selected vehicle category is not available.');
     }
 
-    const existingPlate = await this.prisma.vehicle.findUnique({ where: { plateNumber: dto.plateNumber } });
+    const existingPlate = await this.prisma.vehicle.findUnique({
+      where: { plateNumber: dto.plateNumber },
+    });
     if (existingPlate) {
       throw new ConflictException('A vehicle with this plate number is already registered.');
     }

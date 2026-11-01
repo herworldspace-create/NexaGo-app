@@ -62,7 +62,9 @@ export class RideNotificationsListener {
 
     const content = newRideNearbyNotification();
     await Promise.all(
-      eligibleDriverUserIds.map((driverUserId) => this.notifications.notify(driverUserId, content, { rideId })),
+      eligibleDriverUserIds.map((driverUserId) =>
+        this.notifications.notify(driverUserId, content, { rideId }),
+      ),
     );
   }
 }

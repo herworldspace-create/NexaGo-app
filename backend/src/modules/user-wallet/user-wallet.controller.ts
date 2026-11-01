@@ -22,6 +22,12 @@ export class UserWalletController {
 
   @Post('transfer')
   async transfer(@Body() dto: TransferDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.walletService.transfer(user.userId, dto.recipientPhone, dto.amountKobo, dto.pin, dto.note);
+    return this.walletService.transfer(
+      user.userId,
+      dto.recipientPhone,
+      dto.amountKobo,
+      dto.pin,
+      dto.note,
+    );
   }
 }

@@ -17,8 +17,15 @@ export class WalletController {
   }
 
   @Post('withdrawals')
-  async requestWithdrawal(@Body() dto: RequestWithdrawalDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.walletService.requestWithdrawal(user.userId, dto.amountKobo, dto.payoutAccountReference);
+  async requestWithdrawal(
+    @Body() dto: RequestWithdrawalDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.walletService.requestWithdrawal(
+      user.userId,
+      dto.amountKobo,
+      dto.payoutAccountReference,
+    );
   }
 
   @Get('withdrawals')
